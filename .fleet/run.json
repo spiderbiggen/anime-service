@@ -1,0 +1,13 @@
+{
+    "configurations": [
+        {
+            "type": "cargo",
+            "name": "Run",
+            "cargoArgs": ["run", "--package", "anime-service", "--bin", "anime-service"],
+            "environment": {
+                "RUST_LOG":"DEBUG"
+            },
+        },
+
+    ]
+}
