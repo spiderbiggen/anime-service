@@ -3,14 +3,18 @@ name = "anime-service"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = ["kitsu"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.6.0-rc.2"
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
 chrono = { version = "0.4", default-features = false, features = ["serde"] }
-kitsu = { path = "kitsu", version = "0.1" }
+kitsu = { path = "kitsu" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
+thiserror = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio = { version = "1.21.2", features = ["full"] }

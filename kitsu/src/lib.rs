@@ -11,12 +11,11 @@ use hyper_tls::HttpsConnector;
 use request::Request;
 use serde::{de, Deserialize};
 use url::Url;
+use thiserror::Error as ThisError;
 
 const JSON_API_TYPE: &str = "application/vnd.api+json";
 const ACCEPT_HEADER: &str = "Accept";
 const CONTENT_TYPE_HEADER: &str = "Content-Type";
-
-use thiserror::Error as ThisError;
 
 #[derive(Debug, ThisError)]
 pub enum Error {
