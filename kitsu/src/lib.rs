@@ -90,9 +90,9 @@ impl Client {
         Ok(doc)
     }
 
-    pub(self) async fn get_resources<T>(&self, url: Uri) -> Result<Collection<T>>
+    pub(self) async fn get_resources<T>(&self, uri: Uri) -> Result<Collection<T>>
         where for<'de> T: de::Deserialize<'de> {
-        let doc = self.get_document::<Collection<T>>(url).await?;
+        let doc = self.get_document::<Collection<T>>(uri).await?;
         Ok(doc)
     }
 

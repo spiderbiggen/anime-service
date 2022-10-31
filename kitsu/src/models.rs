@@ -73,7 +73,7 @@ pub struct Titles {
 }
 
 #[derive(Deserialize, Clone, Debug)]
-#[serde(rename_all(deserialize = "camelCase"))]
+#[serde(rename_all = "camelCase")]
 pub struct Attributes {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
