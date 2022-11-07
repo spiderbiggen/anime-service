@@ -1,12 +1,10 @@
-use std::borrow::Borrow;
 use chrono::{DateTime, Utc};
+use futures::future::join_all;
+use hyper::client::connect::Connect;
 use regex::Regex;
 use rss::{Channel, Item};
+use std::{borrow::Borrow, collections::HashMap};
 use url::Url;
-use futures::future::{join_all};
-use hyper::Body;
-use hyper::client::HttpConnector;
-use hyper_tls::HttpsConnector;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -36,18 +34,23 @@ pub struct AnimeSource {
 }
 
 impl AnimeSource {
-    fn new<K>(key: K, category: Option<K>, regex: K, filter: Option<K>, resolutions: Vec<K>) -> Result<Self>
-        where K: Into<String>,
+    fn new<K>(
+        key: K,
+        category: Option<K>,
+        regex: K,
+        filter: Option<K>,
+        resolutions: Vec<K>,
+    ) -> Result<Self>
+    where
+        K: Into<String>,
     {
-        Ok(
-            Self {
-                key: key.into(),
-                category: category.and_then(|c| Some(c.into())),
-                regex: Regex::new(regex.into().as_str())?,
-                filter: filter.and_then(|f| Some(f.into())),
-                resolutions: resolutions.into_iter().map(|a| a.into()).collect(),
-            }
-        )
+        Ok(Self {
+            key: key.into(),
+            category: category.and_then(|c| Some(c.into())),
+            regex: Regex::new(regex.into().as_str())?,
+            filter: filter.and_then(|f| Some(f.into())),
+            resolutions: resolutions.into_iter().map(|a| a.into()).collect(),
+        })
     }
 
     fn map_anime(&self, items: Vec<Item>) -> Vec<NyaaEntry> {
@@ -57,10 +60,9 @@ impl AnimeSource {
             .collect()
     }
 
-    fn build_url<S>(&self, res: S) -> Result<Url>
-        where S: AsRef<str>
+    fn build_url(&self, res: &str, title: &str) -> Result<Url>
     {
-        let query: String = format!("{key} {res}", key = self.key, res = res.as_ref());
+        let query: String = format!("{} {} {}", self.key, title, res);
         let mut filters: Vec<(&str, &str)> = vec![("q", &query)];
         if let Some(ref category) = self.category {
             filters.push(("c", category.as_str()));
@@ -68,22 +70,21 @@ impl AnimeSource {
         if let Some(ref filter) = self.filter {
             filters.push(("f", filter.as_str()));
         }
-        Ok(Url::parse_with_params("https://nyaa.si/?page=rss", filters)?)
+        Ok(Url::parse_with_params(
+            "https://nyaa.si/?page=rss",
+            filters,
+        )?)
     }
 }
 
 pub fn get_sources() -> Result<Vec<AnimeSource>> {
-    Ok(
-        vec![
-            AnimeSource::new(
-                "[SubsPlease]",
-                Some("1_2"),
-                "^\\[.*?] (.*) - (\\d+)(?:\\.(\\d+))?(?:[vV](\\d+?))? \\((\\d+?p)\\) \\[.*?\\].mkv",
-                None,
-                vec!["(1080p)", "(720p)", "(480p)"],
-            )?,
-        ]
-    )
+    Ok(vec![AnimeSource::new(
+        "[SubsPlease]",
+        Some("1_2"),
+        "^\\[.*?] (.*) - (\\d+)(?:\\.(\\d+))?(?:[vV](\\d+?))? \\((\\d+?p)\\) \\[.*?\\].mkv",
+        None,
+        vec!["(1080p)", "(720p)", "(480p)"],
+    )?])
 }
 
 pub struct AnimeDownloads {
@@ -91,6 +92,7 @@ pub struct AnimeDownloads {
     pub downloads: Vec<Download>,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Episode {
     pub title: String,
     pub episode: Option<u32>,
@@ -119,48 +121,95 @@ pub struct NyaaEntry {
     pub pub_date: DateTime<Utc>,
 }
 
-pub struct Client {
-    pub hyper: hyper::Client<HttpsConnector<HttpConnector>, Body>,
+pub async fn groups<C>(client: hyper::Client<C>, title: &str) -> Result<Vec<AnimeDownloads>>
+where
+    C: Connect + Clone + Send + Sync + 'static,
+{
+    let entries = downloads(client, title).await?;
+    Ok(map_groups(entries))
 }
 
-impl Default for Client {
-    fn default() -> Self {
-        Self { hyper: hyper::Client::builder().build(HttpsConnector::new()) }
-    }
+pub async fn downloads<C>(client: hyper::Client<C>, title: &str) -> Result<Vec<NyaaEntry>>
+where
+    C: Connect + Clone + Send + Sync + 'static,
+{
+    let sources = get_sources()?;
+    let tasks: Vec<_> = sources
+        .iter()
+        .flat_map(|source| {
+            source
+                .resolutions
+                .iter()
+                .map(|resolution| (source, resolution))
+                .collect::<Vec<(&AnimeSource, &String)>>()
+        })
+        .map(|(source, resolution)| get_anime_for::<&String, C>(client.clone(), source, resolution, title))
+        .collect();
+    let result = join_all(tasks)
+        .await
+        .into_iter()
+        .filter_map(|a| a.ok())
+        .flatten()
+        .collect();
+    Ok(result)
 }
 
-impl Client {
-    pub fn new(hyper: hyper::Client<HttpsConnector<HttpConnector>, Body>) -> Self {
-        Self { hyper }
+async fn get_anime_for<S, C>(
+    client: hyper::Client<C>,
+    source: &AnimeSource,
+    resolution: &str,
+    title: &str,
+) -> Result<Vec<NyaaEntry>>
+where
+    C: Connect + Clone + Send + Sync + 'static,
+    S: AsRef<str>,
+{
+    let url = source.build_url(resolution, title)?;
+    let val = get_feed(client, &url).await?;
+    Ok(source.map_anime(val.items))
+}
+
+async fn get_feed<C>(client: hyper::Client<C>, url: &Url) -> Result<Channel>
+where
+    C: Connect + Clone + Send + Sync + 'static,
+{
+    let response = client.get(url.as_str().parse()?).await?;
+    let body = hyper::body::to_bytes(response.into_body()).await?;
+    let channel = Channel::read_from(body.borrow())?;
+    Ok(channel)
+}
+
+fn map_groups(entries: Vec<NyaaEntry>) -> Vec<AnimeDownloads> {
+    let mut result_map = HashMap::<Episode, Vec<Download>>::with_capacity(entries.capacity() / 3);
+    for entry in entries {
+        let episode = Episode {
+            title: entry.title,
+            episode: entry.episode,
+            decimal: entry.decimal,
+            version: entry.version,
+        };
+        let download = Download {
+            comments: entry.comments,
+            resolution: entry.resolution,
+            torrent: entry.torrent,
+            file_name: entry.file_name,
+            pub_date: entry.pub_date,
+        };
+        match result_map.get_mut(&episode) {
+            Some(v) => v.push(download),
+            None => {
+                result_map.insert(episode, vec![download]);
+            }
+        }
     }
 
-    pub async fn get_anime(&self) -> Result<Vec<NyaaEntry>> {
-        let sources = get_sources()?;
-        let tasks: Vec<_> = sources.iter()
-            .flat_map(|source| source.resolutions.iter().map(|resolution| (source, resolution)).collect::<Vec<(&AnimeSource, &String)>>())
-            .map(|(source, resolution)| self.get_anime_for::<&String>(source, resolution))
-            .collect();
-        let result = join_all(tasks).await;
-        let result = result.into_iter().filter_map(|a| a.ok())
-            .flatten()
-            .collect();
-        Ok(result)
-    }
-
-    async fn get_anime_for<S>(&self, source: &AnimeSource, resolution: &String) -> Result<Vec<NyaaEntry>>
-        where S: AsRef<str>
-    {
-        let url = source.build_url(resolution)?;
-        let val = self.get_feed(&url).await?;
-        Ok(source.map_anime(val.items))
-    }
-
-    async fn get_feed(&self, url: &Url) -> Result<Channel> {
-        let response = self.hyper.get(url.as_str().parse()?).await?;
-        let body = hyper::body::to_bytes(response.into_body()).await?;
-        let channel = Channel::read_from(body.borrow())?;
-        Ok(channel)
-    }
+    result_map
+        .into_iter()
+        .map(|(k, v)| AnimeDownloads {
+            episode: k,
+            downloads: v,
+        })
+        .collect()
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -175,8 +224,8 @@ struct TitleParts(
 
 impl TitleParts {
     fn from_string<S>(inp: Option<S>, regex: &Regex) -> Option<TitleParts>
-        where
-            S: Into<String>,
+    where
+        S: Into<String>,
     {
         inp.and_then(|s| Some(s.into()))
             .as_ref()

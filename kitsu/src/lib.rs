@@ -3,15 +3,14 @@ extern crate serde;
 
 pub mod models;
 
-use std::borrow::Borrow;
-use hyper::{Body, Uri};
-use hyper::client::HttpConnector;
+use hyper::client::connect::Connect;
 use hyper::http::request;
-use hyper_tls::HttpsConnector;
+use hyper::{Body, Uri};
 use request::Request;
 use serde::{de, Deserialize};
-use url::Url;
+use std::borrow::Borrow;
 use thiserror::Error as ThisError;
+use url::Url;
 
 const JSON_API_TYPE: &str = "application/vnd.api+json";
 const ACCEPT_HEADER: &str = "Accept";
@@ -32,7 +31,6 @@ pub enum Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-
 
 #[derive(Debug, Copy, Clone, Deserialize)]
 pub struct Meta {
@@ -58,54 +56,53 @@ pub struct Single<T> {
     pub data: T,
 }
 
-pub struct Client {
-    pub hyper: hyper::Client<HttpsConnector<HttpConnector>, Body>,
+fn build_request(uri: Uri) -> request::Builder {
+    Request::builder()
+        .header(ACCEPT_HEADER, JSON_API_TYPE)
+        .header(CONTENT_TYPE_HEADER, JSON_API_TYPE)
+        .method("GET")
+        .uri(uri)
 }
 
-impl Client {
-    pub fn new(hyper: hyper::Client<HttpsConnector<HttpConnector>, Body>) -> Self {
-        Self { hyper }
-    }
+async fn get_document<T, C>(client: hyper::Client<C>, uri: Uri) -> Result<T>
+where
+    C: Connect + Clone + Send + Sync + 'static,
+    for<'de> T: de::Deserialize<'de>,
+{
+    let request = build_request(uri);
+    let response = client.request(request.body(Body::empty())?).await?;
+    let body = hyper::body::to_bytes(response.into_body()).await?;
+    let document = serde_json::from_slice(body.borrow())?;
+    return Ok(document);
+}
 
-    fn build_request(&self, uri: Uri) -> request::Builder {
-        Request::builder()
-            .header(ACCEPT_HEADER, JSON_API_TYPE)
-            .header(CONTENT_TYPE_HEADER, JSON_API_TYPE)
-            .method("GET")
-            .uri(uri)
-    }
+pub(self) async fn get_resource<T, C>(client: hyper::Client<C>, uri: Uri) -> Result<Single<T>>
+where
+    C: Connect + Clone + Send + Sync + 'static,
+    for<'de> T: de::Deserialize<'de>,
+{
+    let doc = get_document::<Single<T>, C>(client, uri).await?;
+    Ok(doc)
+}
 
-    async fn get_document<T>(&self, uri: Uri) -> Result<T>
-        where for<'de> T: de::Deserialize<'de> {
-        let request = self.build_request(uri);
-        let response = self.hyper.request(request.body(Body::empty())?).await?;
-        let body = hyper::body::to_bytes(response.into_body()).await?;
-        let document = serde_json::from_slice(body.borrow())?;
-        return Ok(document);
-    }
+pub(self) async fn get_resources<T, C>(client: hyper::Client<C>, uri: Uri) -> Result<Collection<T>>
+where
+    C: Connect + Clone + Send + Sync + 'static,
+    for<'de> T: de::Deserialize<'de>,
+{
+    let doc = get_document::<Collection<T>, C>(client, uri).await?;
+    Ok(doc)
+}
 
-    pub(self) async fn get_resource<T>(&self, uri: Uri) -> Result<Single<T>>
-        where for<'de> T: de::Deserialize<'de> {
-        let doc = self.get_document::<Single<T>>(uri).await?;
-        Ok(doc)
-    }
+pub mod anime {
+    use crate::*;
 
-    pub(self) async fn get_resources<T>(&self, uri: Uri) -> Result<Collection<T>>
-        where for<'de> T: de::Deserialize<'de> {
-        let doc = self.get_document::<Collection<T>>(uri).await?;
-        Ok(doc)
-    }
-
-    pub async fn get_anime(&self, id: u32) -> Result<Single<models::Anime>> {
+    pub async fn single<C>(client: hyper::Client<C>, id: u32) -> Result<Single<models::Anime>>
+    where
+        C: Connect + Clone + Send + Sync + 'static,
+    {
         let uri = format!("https://kitsu.io/api/edge/anime/{}", id).parse()?;
-        let anime = self.get_resource::<models::Anime>(uri).await?;
+        let anime = get_resource::<models::Anime, C>(client, uri).await?;
         return Ok(anime);
     }
 }
-
-impl Default for Client {
-    fn default() -> Self {
-        Self { hyper: hyper::Client::builder().build(HttpsConnector::new()) }
-    }
-}
-

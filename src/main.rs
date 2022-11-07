@@ -1,18 +1,19 @@
 mod models;
+mod controllers;
 
 #[macro_use]
 extern crate rocket;
 
-use std::num::ParseIntError;
+use hyper::client::HttpConnector;
 use hyper_tls::HttpsConnector;
-use rocket::{Request, Response};
+use once_cell::sync::Lazy;
 use rocket::http::{ContentType, Status};
 use rocket::response::Responder;
-use rocket::serde::{json::Json};
-use tracing::error;
+use rocket::{Request, Response};
+use std::num::ParseIntError;
 use thiserror::Error as ThisError;
-use kitsu;
-use nyaa;
+use tracing::error;
+use crate::controllers::{anime, downloads};
 
 #[derive(Debug, ThisError)]
 pub enum Error {
@@ -28,6 +29,8 @@ pub enum Error {
     ParseIntError(#[from] ParseIntError),
 }
 
+static HYPER: Lazy<hyper::Client<HttpsConnector<HttpConnector>>> = Lazy::new(||hyper::Client::builder().build(HttpsConnector::new()));
+
 #[rocket::async_trait]
 impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
     fn respond_to(self, _: &'r Request<'_>) -> rocket::response::Result<'o> {
@@ -41,32 +44,15 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
     }
 }
 
-
 #[rocket::main]
 async fn main() -> Result<(), Error> {
     // initialize tracing
     tracing_subscriber::fmt::init();
     // our router
     let rocket = rocket::build()
-        .mount("/anime", routes![get_anime])
-        .mount("/downloads", routes![get_downloads]);
+        .mount("/anime", routes![anime::get_anime])
+        .mount("/downloads", routes![downloads::get, downloads::get_groups]);
 
     let _ignite = rocket.launch().await?;
     Ok(())
 }
-
-#[get("/<id>")]
-async fn get_anime(id: u32) -> Result<Json<models::Show>, Error> {
-    let client: kitsu::Client = Default::default();
-    let anime = client.get_anime(id).await?;
-    Ok(Json(anime.data.try_into()?))
-}
-
-#[get("/")]
-async fn get_downloads() -> Result<Json<Vec<models::Episode>>, Error> {
-    let client: nyaa::Client = Default::default();
-    let episodes = client.get_anime().await;
-    let result = episodes?.iter().map(|e| e.into()).collect();
-    Ok(Json(result))
-}
-
