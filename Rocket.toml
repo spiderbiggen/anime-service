@@ -7,3 +7,7 @@ limits = { form = "64 kB", json = "1 MiB" }
 [debug]
 port = 8000
 log_level = "debug"
+
+[production]
+port = 8000
+log_level = "info"
