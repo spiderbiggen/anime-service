@@ -6,7 +6,6 @@ WORKDIR /app
 
 COPY ./Cargo.toml ./
 
-RUN cargo fetch
 
 COPY ./src ./src
 COPY ./consume_api ./consume_api
