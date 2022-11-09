@@ -3,7 +3,8 @@ FROM --platform=$BUILDPLATFORM rust:1.65 as Builder
 
 WORKDIR /app
 
-RUN sudo apt-get install -qq gcc-arm-linux-gnueabihf libssl-dev libssl-dev:armhf
+RUN dpkg --add-architecture arm64
+RUN sudo apt-get install -qq gcc-arm-linux-gnueabihf libssl-dev libssl-dev:arm64
 ARG TARGETPLATFORM
 RUN case "$TARGETPLATFORM" in \
   "linux/arm64") echo aarch64-unknown-linux-gnu > /rust_target.txt ;; \
