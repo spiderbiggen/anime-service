@@ -3,19 +3,20 @@ FROM --platform=$BUILDPLATFORM rust:1.65 as Builder
 
 WORKDIR /app
 
-COPY ./Cargo.toml ./
-COPY ./src ./src
-COPY ./consume_api ./consume_api
-COPY ./kitsu ./kitsu
-COPY ./nyaa ./nyaa
-COPY ./Rocket.toml ./Rocket.toml
-
+RUN sudo apt-get install -qq gcc-arm-linux-gnueabihf libssl-dev libssl-dev:armhf
 ARG TARGETPLATFORM
 RUN case "$TARGETPLATFORM" in \
   "linux/arm64") echo aarch64-unknown-linux-gnu > /rust_target.txt ;; \
   "linux/amd64") echo x86_64-unknown-linux-gnu > /rust_target.txt ;; \
   *) exit 1 ;; \
 esac
+
+COPY ./Cargo.toml ./
+COPY ./src ./src
+COPY ./consume_api ./consume_api
+COPY ./kitsu ./kitsu
+COPY ./nyaa ./nyaa
+COPY ./Rocket.toml ./Rocket.toml
 
 RUN rustup target add $(cat /rust_target.txt)
 RUN cargo build --release --target $(cat /rust_target.txt)
