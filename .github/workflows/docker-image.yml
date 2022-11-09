@@ -29,10 +29,10 @@ jobs:
           toolchain: stable
 
       - name: Build
-          uses: actions-rs/cargo@v1
-          with:
-            command: build
-            args: --release --all-features
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --all-features
 
   publish:
     needs: test
