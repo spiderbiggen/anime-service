@@ -5,7 +5,6 @@ FROM rust:1.65 as Builder
 WORKDIR /app
 
 COPY ./Cargo.toml ./
-COPY ./Cargo.lock ./
 
 RUN cargo fetch
 
