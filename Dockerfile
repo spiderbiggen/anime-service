@@ -1,19 +1,25 @@
 # syntax=docker/dockerfile:1
-
-FROM rust:1.65 as Builder
+FROM --platform=$BUILDPLATFORM rust:1.65 as Builder
 
 WORKDIR /app
 
 COPY ./Cargo.toml ./
-
-
 COPY ./src ./src
 COPY ./consume_api ./consume_api
 COPY ./kitsu ./kitsu
 COPY ./nyaa ./nyaa
 COPY ./Rocket.toml ./Rocket.toml
 
-RUN cargo build --release
+ARG TARGETPLATFORM
+RUN case "$TARGETPLATFORM" in \
+  "linux/arm/v7") echo armv7-unknown-linux-musleabihf > /rust_target.txt ;; \
+  "linux/amd64") echo arm-unknown-linux-musleabihf > /rust_target.txt ;; \
+  *) exit 1 ;; \
+esac
+
+RUN rustup target add $(cat /rust_target.txt)
+RUN cargo build --release --target $(cat /rust_target.txt)
+RUN cp target/$(cat /rust_target.txt)/release/anime-service ./
 
 FROM gcr.io/distroless/static as Application
 
