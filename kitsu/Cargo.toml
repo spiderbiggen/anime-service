@@ -12,7 +12,7 @@ consume_api = { path = "../consume_api", version = "0.1", features = ["hyper-tls
 chrono = { version = "0.4", default-features = false, features = ["serde"] }
 derive_builder = "0.11"
 hyper = { version = "0.14", features = ["client"] }
-hyper-tls = "0.5"
+hyper-tls = {version = "0.5", features = ["features"] }
 http-serde = "1"
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
