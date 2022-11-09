@@ -24,5 +24,5 @@ WORKDIR /opt
 COPY --from=Builder /anime-service ./anime-service
 COPY --from=Builder /app/Rocket.toml ./Rocket.toml
 
-EXPOSE 80
+EXPOSE 8000
 ENTRYPOINT ["/opt/anime-service"]
