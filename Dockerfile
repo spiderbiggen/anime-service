@@ -3,7 +3,10 @@ FROM --platform=$BUILDPLATFORM rust:1.65 as Builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -qq g++-aarch64-linux-gnu gcc-aarch64-linux-gnu
+RUN apt-get update && apt-get install -qq g++-aarch64-linux-gnu libc6-dev-arm64-cross
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
 
 COPY ./ ./
 
