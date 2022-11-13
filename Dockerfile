@@ -19,7 +19,7 @@ esac
 
 RUN rustup target add $(cat /rust_target.txt)
 RUN cargo build --release --target $(cat /rust_target.txt)
-RUN cp target/$(cat /rust_target.txt)/release/anime-service ./
+RUN cp target/$(cat /rust_target.txt)/release/anime-service /app/anime-service
 
 FROM gcr.io/distroless/static as Application
 
