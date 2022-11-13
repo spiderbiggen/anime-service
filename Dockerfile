@@ -3,7 +3,6 @@ FROM --platform=$BUILDPLATFORM rust:1.65 as Builder
 
 WORKDIR /app
 
-RUN dpkg --add-architecture arm64
 RUN apt-get update && apt-get install -qq gcc-arm-linux-gnueabihf
 ARG TARGETPLATFORM
 RUN case "$TARGETPLATFORM" in \
