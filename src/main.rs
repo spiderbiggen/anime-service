@@ -1,11 +1,12 @@
-mod models;
 mod controllers;
+mod models;
 
 #[macro_use]
 extern crate rocket;
 
+use crate::controllers::{anime, downloads};
 use hyper::client::HttpConnector;
-use hyper_tls::HttpsConnector;
+use hyper_rustls::HttpsConnector;
 use once_cell::sync::Lazy;
 use rocket::http::{ContentType, Status};
 use rocket::response::Responder;
@@ -13,7 +14,6 @@ use rocket::{Request, Response};
 use std::num::ParseIntError;
 use thiserror::Error as ThisError;
 use tracing::error;
-use crate::controllers::{anime, downloads};
 
 #[derive(Debug, ThisError)]
 pub enum Error {
@@ -29,7 +29,14 @@ pub enum Error {
     ParseIntError(#[from] ParseIntError),
 }
 
-static HYPER: Lazy<hyper::Client<HttpsConnector<HttpConnector>>> = Lazy::new(||hyper::Client::builder().build(HttpsConnector::new()));
+static HYPER: Lazy<hyper::Client<HttpsConnector<HttpConnector>>> = Lazy::new(|| {
+    let https = hyper_rustls::HttpsConnectorBuilder::new()
+        .with_native_roots()
+        .https_or_http()
+        .enable_http1()
+        .build();
+    hyper::Client::builder().build(https)
+});
 
 #[rocket::async_trait]
 impl<'r, 'o: 'r> Responder<'r, 'o> for Error {

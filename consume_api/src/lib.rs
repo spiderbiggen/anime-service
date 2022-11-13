@@ -22,7 +22,7 @@ mod hyper {
     use hyper::client::{Client as HyperClient, HttpConnector};
     use hyper::Body;
     #[cfg(feature = "hyper-tls")]
-    use hyper_tls::HttpsConnector;
+    use hyper_rustls::HttpsConnector;
     use log::debug;
     use url::Url;
 
