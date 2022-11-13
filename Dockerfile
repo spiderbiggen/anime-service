@@ -3,7 +3,7 @@ FROM --platform=$BUILDPLATFORM rust:1.65 as Builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -qq gcc-arm-linux-gnueabihf
+RUN apt-get update && apt-get install -qq g++-aarch64-linux-gnu gcc-aarch64-linux-gnu
 ARG TARGETPLATFORM
 RUN case "$TARGETPLATFORM" in \
   "linux/arm64") echo aarch64-unknown-linux-gnu > /rust_target.txt ;; \
