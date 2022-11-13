@@ -5,12 +5,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -qq g++-aarch64-linux-gnu gcc-aarch64-linux-gnu
 
-COPY ./Cargo.toml ./
-COPY ./src ./src
-COPY ./consume_api ./consume_api
-COPY ./kitsu ./kitsu
-COPY ./nyaa ./nyaa
-COPY ./Rocket.toml ./Rocket.toml
+COPY ./ ./
 
 ARG TARGETPLATFORM
 RUN case "$TARGETPLATFORM" in \
