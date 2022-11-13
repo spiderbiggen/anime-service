@@ -12,9 +12,9 @@ COPY ./ ./
 
 ARG TARGETPLATFORM
 RUN case "$TARGETPLATFORM" in \
-"linux/arm64") echo aarch64-unknown-linux-gnu > /rust_target.txt ;; \
-"linux/amd64") echo x86_64-unknown-linux-gnu > /rust_target.txt ;; \
-*) exit 1 ;; \
+  "linux/arm64") echo aarch64-unknown-linux-gnu > /rust_target.txt ;; \
+  "linux/amd64") echo x86_64-unknown-linux-gnu > /rust_target.txt ;; \
+  *) exit 1 ;; \
 esac
 
 RUN rustup target add $(cat /rust_target.txt)
@@ -25,8 +25,8 @@ FROM gcr.io/distroless/static as Application
 
 WORKDIR /opt
 
-COPY --from=Builder /app/anime-service ./anime-service
-COPY --from=Builder /app/Rocket.toml ./Rocket.toml
+COPY --from=Builder /app/anime-service /opt/anime-service
+COPY --from=Builder /app/Rocket.toml /opt/Rocket.toml
 
 EXPOSE 8000
 ENTRYPOINT ["/opt/anime-service"]
