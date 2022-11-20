@@ -5,7 +5,7 @@
             "name": "Run",
             "cargoArgs": ["run", "--package", "anime-service", "--bin", "anime-service"],
             "environment": {
-                "RUST_LOG":"INFO"
+                "RUST_LOG":"info,anime_service=trace"
             },
         },
 

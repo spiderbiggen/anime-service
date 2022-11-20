@@ -8,9 +8,9 @@ ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
 
 ARG TARGETPLATFORM
 RUN case "$TARGETPLATFORM" in \
-"linux/arm64") echo aarch64-unknown-linux-gnu > /rust_target.txt ;; \
-"linux/amd64") echo x86_64-unknown-linux-gnu > /rust_target.txt ;; \
-*) exit 1 ;; \
+  "linux/arm64") echo aarch64-unknown-linux-gnu > /rust_target.txt ;; \
+  "linux/amd64") echo x86_64-unknown-linux-gnu > /rust_target.txt ;; \
+  *) exit 1 ;; \
 esac
 
 RUN rustup target add $(cat /rust_target.txt)

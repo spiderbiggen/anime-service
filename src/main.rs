@@ -1,24 +1,24 @@
 mod controllers;
 mod models;
 
-#[macro_use]
-extern crate rocket;
-
 use crate::controllers::{anime, downloads};
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::get,
+    Json, Router,
+};
 use hyper::client::HttpConnector;
 use hyper_rustls::HttpsConnector;
 use once_cell::sync::Lazy;
-use rocket::http::{ContentType, Status};
-use rocket::response::Responder;
-use rocket::{Request, Response};
-use std::num::ParseIntError;
+use serde_json::json;
+use std::{net::SocketAddr, num::ParseIntError};
 use thiserror::Error as ThisError;
 use tracing::error;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Debug, ThisError)]
 pub enum Error {
-    #[error(transparent)]
-    RocketError(#[from] rocket::Error),
     #[error(transparent)]
     SerdeJsonError(#[from] serde_json::Error),
     #[error(transparent)]
@@ -38,28 +38,36 @@ static HYPER: Lazy<hyper::Client<HttpsConnector<HttpConnector>>> = Lazy::new(|| 
     hyper::Client::builder().build(https)
 });
 
-#[rocket::async_trait]
-impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
-    fn respond_to(self, _: &'r Request<'_>) -> rocket::response::Result<'o> {
-        let mut builder = Response::build();
-        builder.header(ContentType::Plain);
-        match self {
-            Self::ParseIntError(_) => builder.status(Status::BadRequest),
-            _ => builder.status(Status::InternalServerError),
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        let (status, error_message) = match self {
+            Self::ParseIntError(_) => (StatusCode::BAD_REQUEST, "Failed to parse integer"),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
         };
-        builder.ok()
+        let body = Json(json!({
+            "error": error_message,
+        }));
+        (status, body).into_response()
     }
 }
 
-#[rocket::main]
+#[tokio::main]
 async fn main() -> Result<(), Error> {
     // initialize tracing
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_subscriber::fmt::layer())
+        .init();
     // our router
-    let rocket = rocket::build()
-        .mount("/anime", routes![anime::get_anime])
-        .mount("/downloads", routes![downloads::get, downloads::get_groups]);
+    let app = Router::new()
+        .route("/anime/:id", get(anime::get_single))
+        .route("/downloads", get(downloads::get));
 
-    let _ignite = rocket.launch().await?;
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
+    tracing::debug!("listening on {}", addr);
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
     Ok(())
 }
