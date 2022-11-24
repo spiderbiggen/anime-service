@@ -22,7 +22,6 @@ RUN cp ./target/$(cat /rust_target.txt)/release/anime-service /anime-service
 FROM gcr.io/distroless/cc as application
 
 COPY --from=builder /anime-service /
-COPY --from=builder /Rocket.toml /
 
 EXPOSE 8000
 ENTRYPOINT ["./anime-service"]

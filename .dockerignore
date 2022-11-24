@@ -4,5 +4,6 @@
 .idea
 .env
 .dockerignore
+.gitignore
 Dockerfile
 target

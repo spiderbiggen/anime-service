@@ -1,6 +1,5 @@
 use crate::{models, Error, HYPER};
 use axum::{extract::Query, Json, response::Response};
-use hyper::StatusCode;
 use itertools::Itertools;
 use serde::Deserialize;
 use std::result::Result;
