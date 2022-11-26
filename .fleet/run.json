@@ -5,9 +5,9 @@
             "name": "Run",
             "cargoArgs": ["run", "--package", "anime-service", "--bin", "anime-service"],
             "environment": {
-                "RUST_LOG":"info,anime_service=trace"
+                "RUST_LOG":"info,anime_service=trace",
+                "DATABASE_URL": "postgres://postgres:postgres@localhost/anime-service"
             },
         },
-
     ]
 }

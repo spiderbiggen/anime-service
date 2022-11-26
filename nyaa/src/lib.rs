@@ -5,6 +5,7 @@ use regex::Regex;
 use rss::{Channel, Item};
 use std::{borrow::Borrow, collections::HashMap};
 use url::Url;
+use hyper::http::StatusCode;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -20,6 +21,8 @@ pub enum Error {
     Rss(#[from] rss::Error),
     #[error(transparent)]
     Regex(#[from] regex::Error),
+    #[error("request failed with status code: {0}")]
+    Status(StatusCode)
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -174,6 +177,10 @@ where
     C: Connect + Clone + Send + Sync + 'static,
 {
     let response = client.get(url.as_str().parse()?).await?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(Error::Status(status));
+    }
     let body = hyper::body::to_bytes(response.into_body()).await?;
     let channel = Channel::read_from(body.borrow())?;
     Ok(channel)
