@@ -115,7 +115,7 @@ pub mod anime {
         C: Connect + Clone + Send + Sync + 'static,
     {
         let uri = "https://kitsu.io/api/edge/anime/".parse()?;
-        let anime = get_document::<models::Anime, C>(client, uri).await?;
+        let anime = get_resources::<models::Anime, C>(client, uri).await?;
         return Ok(anime);
     }
 }
