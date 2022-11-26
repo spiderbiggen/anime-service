@@ -142,6 +142,7 @@ impl TryFrom<kitsu::Anime> for Show {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DownloadGroup {
+    #[serde(flatten)]
     pub episode: Episode,
     pub downloads: Vec<Download>,
 }

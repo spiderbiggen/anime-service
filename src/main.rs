@@ -14,6 +14,10 @@ use once_cell::sync::Lazy;
 use serde_json::json;
 use std::{net::SocketAddr, num::ParseIntError};
 use thiserror::Error as ThisError;
+use tower::ServiceBuilder;
+use tower_http::{
+    compression::CompressionLayer, decompression::DecompressionLayer, trace::TraceLayer,
+};
 use tracing::error;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -61,7 +65,13 @@ async fn main() -> Result<(), Error> {
     // our router
     let app = Router::new()
         .route("/anime/:id", get(anime::get_single))
-        .route("/downloads", get(downloads::get));
+        .route("/downloads", get(downloads::get))
+        .layer(
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
+                .layer(DecompressionLayer::new())
+                .layer(CompressionLayer::new()),
+        );
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
     tracing::debug!("listening on {}", addr);

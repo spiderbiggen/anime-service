@@ -1,11 +1,10 @@
 use chrono::{DateTime, Utc};
-use futures::future::join_all;
 use hyper::client::connect::Connect;
+use hyper::http::StatusCode;
 use regex::Regex;
 use rss::{Channel, Item};
 use std::{borrow::Borrow, collections::HashMap};
 use url::Url;
-use hyper::http::StatusCode;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -22,7 +21,7 @@ pub enum Error {
     #[error(transparent)]
     Regex(#[from] regex::Error),
     #[error("request failed with status code: {0}")]
-    Status(StatusCode)
+    Status(StatusCode),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -33,26 +32,18 @@ pub struct AnimeSource {
     pub(crate) category: Option<String>,
     pub(crate) filter: Option<String>,
     pub(crate) regex: Regex,
-    pub(crate) resolutions: Vec<String>,
 }
 
 impl AnimeSource {
-    fn new<K>(
-        key: K,
-        category: Option<K>,
-        regex: K,
-        filter: Option<K>,
-        resolutions: Vec<K>,
-    ) -> Result<Self>
+    fn new<K>(key: K, category: Option<K>, regex: K, filter: Option<K>) -> Result<Self>
     where
         K: Into<String>,
     {
         Ok(Self {
             key: key.into(),
             category: category.and_then(|c| Some(c.into())),
-            regex: Regex::new(regex.into().as_str())?,
+            regex: Regex::new(&regex.into())?,
             filter: filter.and_then(|f| Some(f.into())),
-            resolutions: resolutions.into_iter().map(|a| a.into()).collect(),
         })
     }
 
@@ -63,9 +54,8 @@ impl AnimeSource {
             .collect()
     }
 
-    fn build_url(&self, res: &str, title: &str) -> Result<Url>
-    {
-        let query: String = format!("{} {} {}", self.key, title, res);
+    fn build_url(&self, title: &str) -> Result<Url> {
+        let query: String = format!("{} {}", self.key, title);
         let mut filters: Vec<(&str, &str)> = vec![("q", &query)];
         if let Some(ref category) = self.category {
             filters.push(("c", category.as_str()));
@@ -78,16 +68,6 @@ impl AnimeSource {
             filters,
         )?)
     }
-}
-
-pub fn get_sources() -> Result<Vec<AnimeSource>> {
-    Ok(vec![AnimeSource::new(
-        "[SubsPlease]",
-        Some("1_2"),
-        "^\\[.*?] (.*) - (\\d+)(?:\\.(\\d+))?(?:[vV](\\d+?))? \\((\\d+?p)\\) \\[.*?\\].mkv",
-        None,
-        vec!["(1080p)", "(720p)", "(480p)"],
-    )?])
 }
 
 pub struct AnimeDownloads {
@@ -136,38 +116,26 @@ pub async fn downloads<C>(client: hyper::Client<C>, title: &str) -> Result<Vec<N
 where
     C: Connect + Clone + Send + Sync + 'static,
 {
-    let sources = get_sources()?;
-    let tasks: Vec<_> = sources
-        .iter()
-        .flat_map(|source| {
-            source
-                .resolutions
-                .iter()
-                .map(|resolution| (source, resolution))
-                .collect::<Vec<(&AnimeSource, &String)>>()
-        })
-        .map(|(source, resolution)| get_anime_for::<&String, C>(client.clone(), source, resolution, title))
-        .collect();
-    let result = join_all(tasks)
-        .await
-        .into_iter()
-        .filter_map(|a| a.ok())
-        .flatten()
-        .collect();
-    Ok(result)
+    let source = AnimeSource::new(
+        "[SubsPlease]",
+        Some("1_2"),
+        r"^\[.*?] (.*) - (\d+)(?:\.(\d+))?(?:[vV](\d+?))? \((\d+?p)\) \[.*?\].mkv",
+        None,
+    )?;
+    let anime = get_anime_for::<&String, C>(client.clone(), &source, title).await?;
+    Ok(anime)
 }
 
 async fn get_anime_for<S, C>(
     client: hyper::Client<C>,
     source: &AnimeSource,
-    resolution: &str,
     title: &str,
 ) -> Result<Vec<NyaaEntry>>
 where
     C: Connect + Clone + Send + Sync + 'static,
     S: AsRef<str>,
 {
-    let url = source.build_url(resolution, title)?;
+    let url = source.build_url(title)?;
     let val = get_feed(client, &url).await?;
     Ok(source.map_anime(val.items))
 }
@@ -284,6 +252,16 @@ fn to_anime(item: Item, regex: &Regex) -> Option<NyaaEntry> {
 mod tests {
     use super::*;
 
+    fn get_source() -> AnimeSource {
+        AnimeSource::new(
+            "[SubsPlease]",
+            Some("1_2"),
+            "^\\[.*?] (.*) - (\\d+)(?:\\.(\\d+))?(?:[vV](\\d+?))? \\((\\d+?p)\\) \\[.*?\\].mkv",
+            None,
+        )
+        .unwrap()
+    }
+
     #[test]
     fn test_parse_anime_components_basic() {
         let input = "[_] Test Anime - 01 (1080p) [_].mkv";
@@ -295,7 +273,7 @@ mod tests {
             None,
             None,
         );
-        let source = get_sources().unwrap().get(0).unwrap().clone();
+        let source = get_source();
         let result = TitleParts::from_string(Some(input), &source.regex);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), expected);
@@ -312,7 +290,7 @@ mod tests {
             None,
             Some(1),
         );
-        let source = get_sources().unwrap().get(0).unwrap().clone();
+        let source = get_source();
         let result = TitleParts::from_string(Some(input), &source.regex);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), expected);
@@ -329,7 +307,7 @@ mod tests {
             None,
             Some(1),
         );
-        let source = get_sources().unwrap().get(0).unwrap().clone();
+        let source = get_source();
         let result = TitleParts::from_string(Some(input), &source.regex);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), expected);
@@ -346,7 +324,7 @@ mod tests {
             Some(1),
             None,
         );
-        let source = get_sources().unwrap().get(0).unwrap().clone();
+        let source = get_source();
         let result = TitleParts::from_string(Some(input), &source.regex);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), expected);
@@ -363,7 +341,7 @@ mod tests {
             Some(1),
             Some(1),
         );
-        let source = get_sources().unwrap().get(0).unwrap().clone();
+        let source = get_source();
         let result = TitleParts::from_string(Some(input), &source.regex);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), expected);
@@ -380,7 +358,7 @@ mod tests {
             Some(1),
             Some(1),
         );
-        let source = get_sources().unwrap().get(0).unwrap().clone();
+        let source = get_source();
         let result = TitleParts::from_string(Some(input), &source.regex);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), expected);

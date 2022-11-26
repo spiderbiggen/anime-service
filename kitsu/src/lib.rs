@@ -4,7 +4,7 @@ extern crate serde;
 pub mod models;
 
 use hyper::client::connect::Connect;
-use hyper::http::request;
+use hyper::http::{request, StatusCode};
 use hyper::{Body, Uri};
 use request::Request;
 use serde::{de, Deserialize};
@@ -28,6 +28,8 @@ pub enum Error {
     Uri(#[from] hyper::http::uri::InvalidUri),
     #[error(transparent)]
     Request(#[from] hyper::Error),
+    #[error("request failed with status code: {0}")]
+    Status(StatusCode),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -71,6 +73,10 @@ where
 {
     let request = build_request(uri);
     let response = client.request(request.body(Body::empty())?).await?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(Error::Status(status));
+    }
     let body = hyper::body::to_bytes(response.into_body()).await?;
     let document = serde_json::from_slice(body.borrow())?;
     return Ok(document);
@@ -81,8 +87,7 @@ where
     C: Connect + Clone + Send + Sync + 'static,
     for<'de> T: de::Deserialize<'de>,
 {
-    let doc = get_document::<Single<T>, C>(client, uri).await?;
-    Ok(doc)
+    Ok(get_document::<Single<T>, C>(client, uri).await?)
 }
 
 pub(self) async fn get_resources<T, C>(client: hyper::Client<C>, uri: Uri) -> Result<Collection<T>>
@@ -90,8 +95,7 @@ where
     C: Connect + Clone + Send + Sync + 'static,
     for<'de> T: de::Deserialize<'de>,
 {
-    let doc = get_document::<Collection<T>, C>(client, uri).await?;
-    Ok(doc)
+    Ok(get_document::<Collection<T>, C>(client, uri).await?)
 }
 
 pub mod anime {
@@ -103,6 +107,15 @@ pub mod anime {
     {
         let uri = format!("https://kitsu.io/api/edge/anime/{}", id).parse()?;
         let anime = get_resource::<models::Anime, C>(client, uri).await?;
+        return Ok(anime);
+    }
+
+    pub async fn collection<C>(client: hyper::Client<C>) -> Result<Collection<models::Anime>>
+    where
+        C: Connect + Clone + Send + Sync + 'static,
+    {
+        let uri = "https://kitsu.io/api/edge/anime/".parse()?;
+        let anime = get_document::<models::Anime, C>(client, uri).await?;
         return Ok(anime);
     }
 }
