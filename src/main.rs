@@ -69,8 +69,8 @@ async fn main() -> Result<(), Error> {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(DecompressionLayer::new())
-                .layer(CompressionLayer::new()),
+                .layer(CompressionLayer::new())
+                .layer(DecompressionLayer::new()),
         );
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
