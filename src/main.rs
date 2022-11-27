@@ -44,8 +44,15 @@ static HYPER: Lazy<hyper::Client<HttpsConnector<HttpConnector>>> = Lazy::new(|| 
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
+        error!("Request failed with {self}");
         let (status, error_message) = match self {
             Self::ParseIntError(_) => (StatusCode::BAD_REQUEST, "Failed to parse integer"),
+            Self::Nyaa(nyaa::Error::Status(code)) => {
+                (code, code.canonical_reason().unwrap_or_default())
+            }
+            Self::Kitsu(kitsu::Error::Status(code)) => {
+                (code, code.canonical_reason().unwrap_or_default())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
         };
         let body = Json(json!({

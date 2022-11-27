@@ -4,7 +4,6 @@ use axum::{extract::Query, response::Response, Json};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::result::Result;
-use tracing::error;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct DownloadQuery {
@@ -29,10 +28,7 @@ pub(crate) async fn get(Query(params): Query<DownloadQuery>) -> Response {
 pub(crate) async fn get_ungrouped(
     title: String,
 ) -> Result<Json<Vec<models::DirectDownload>>, Error> {
-    let episodes = nyaa::downloads(HYPER.clone(), &title).await.map_err(|e| {
-        error!("Failed to get downloads {e}");
-        e
-    })?;
+    let episodes = nyaa::downloads(HYPER.clone(), &title).await?;
     let result = episodes
         .into_iter()
         .map(|e| e.into())
@@ -43,14 +39,11 @@ pub(crate) async fn get_ungrouped(
 }
 
 pub(crate) async fn get_groups(title: String) -> Result<Json<Vec<models::DownloadGroup>>, Error> {
-    let episodes = nyaa::groups(HYPER.clone(), &title).await.map_err(|e| {
-        error!("Failed to get downloads {e}");
-        e
-    })?;
+    let episodes = nyaa::groups(HYPER.clone(), &title).await?;
     let result = episodes
         .into_iter()
-        .map(|e| Into::into(e))
-        .sorted_by_key(|a: &models::DownloadGroup| a.episode.episode)
+        .map(|e| e.into())
+        .sorted_by_key(|a: &models::DownloadGroup| a.episode.pub_date)
         .rev()
         .collect();
     Ok(Json(result))
