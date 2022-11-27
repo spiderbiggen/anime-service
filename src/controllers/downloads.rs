@@ -1,9 +1,10 @@
 use crate::{models, Error, HYPER};
-use axum::{extract::Query, Json, response::Response};
+use axum::response::IntoResponse;
+use axum::{extract::Query, response::Response, Json};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::result::Result;
-use axum::response::IntoResponse;
+use tracing::error;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct DownloadQuery {
@@ -21,14 +22,17 @@ pub(crate) async fn get(Query(params): Query<DownloadQuery>) -> Response {
         _ => match get_ungrouped(title).await {
             Ok(groups) => groups.into_response(),
             Err(e) => e.into_response(),
-        }
+        },
     }
 }
 
 pub(crate) async fn get_ungrouped(
     title: String,
 ) -> Result<Json<Vec<models::DirectDownload>>, Error> {
-    let episodes = nyaa::downloads(HYPER.clone(), &title).await?;
+    let episodes = nyaa::downloads(HYPER.clone(), &title).await.map_err(|e| {
+        error!("Failed to get downloads {e}");
+        e
+    })?;
     let result = episodes
         .into_iter()
         .map(|e| e.into())
@@ -39,7 +43,10 @@ pub(crate) async fn get_ungrouped(
 }
 
 pub(crate) async fn get_groups(title: String) -> Result<Json<Vec<models::DownloadGroup>>, Error> {
-    let episodes = nyaa::groups(HYPER.clone(), &title).await?;
+    let episodes = nyaa::groups(HYPER.clone(), &title).await.map_err(|e| {
+        error!("Failed to get downloads {e}");
+        e
+    })?;
     let result = episodes
         .into_iter()
         .map(|e| Into::into(e))
