@@ -76,7 +76,7 @@ impl From<kitsu::Images> for Images {
 
 #[derive(Serialize, Clone, Debug)]
 pub struct Titles {
-    pub en: String,
+    pub en: Option<String>,
     pub en_jp: String,
     pub ja_jp: String,
 }
@@ -103,9 +103,9 @@ pub struct Show {
     pub start_date: String,
     pub end_date: String,
     pub poster_image: Images,
-    pub cover_image: Images,
-    pub episode_count: u32,
-    pub episode_length: u32,
+    pub cover_image: Option<Images>,
+    pub episode_count: Option<u32>,
+    pub episode_length: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total_length: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -130,7 +130,7 @@ impl TryFrom<kitsu::Anime> for Show {
             start_date: value.attributes.start_date,
             end_date: value.attributes.end_date,
             poster_image: value.attributes.poster_image.into(),
-            cover_image: value.attributes.cover_image.into(),
+            cover_image: value.attributes.cover_image.map(|c| c.into()),
             episode_count: value.attributes.episode_count,
             episode_length: value.attributes.episode_length,
             total_length: value.attributes.total_length,

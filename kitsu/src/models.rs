@@ -67,7 +67,7 @@ pub struct ImageDimensions {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Titles {
-    pub en: String,
+    pub en: Option<String>,
     pub en_jp: String,
     pub ja_jp: String,
 }
@@ -101,9 +101,9 @@ pub struct Attributes {
     pub tba: Value,
     // TODO when api provides a value
     pub poster_image: Images,
-    pub cover_image: Images,
-    pub episode_count: u32,
-    pub episode_length: u32,
+    pub cover_image: Option<Images>,
+    pub episode_count: Option<u32>,
+    pub episode_length: Option<u32>,
     pub total_length: Option<u64>,
     pub youtube_video_id: Option<String>,
     pub nsfw: bool,

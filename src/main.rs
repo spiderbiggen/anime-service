@@ -46,14 +46,14 @@ impl IntoResponse for Error {
     fn into_response(self) -> Response {
         error!("Request failed with {self}");
         let (status, error_message) = match self {
-            Self::ParseIntError(_) => (StatusCode::BAD_REQUEST, "Failed to parse integer"),
+            Self::ParseIntError(_) => (StatusCode::BAD_REQUEST, "failed to parse integer"),
             Self::Nyaa(nyaa::Error::Status(code)) => {
                 (code, code.canonical_reason().unwrap_or_default())
             }
             Self::Kitsu(kitsu::Error::Status(code)) => {
                 (code, code.canonical_reason().unwrap_or_default())
             }
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal server error"),
         };
         let body = Json(json!({
             "error": error_message,
@@ -71,7 +71,8 @@ async fn main() -> Result<(), Error> {
         .init();
     // our router
     let app = Router::new()
-        .route("/anime/:id", get(anime::get_single))
+        .route("/series", get(anime::get_collection))
+        .route("/series/:id", get(anime::get_single))
         .route("/downloads", get(downloads::get))
         .layer(
             ServiceBuilder::new()
