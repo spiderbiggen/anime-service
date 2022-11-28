@@ -10,7 +10,7 @@ edition = "2021"
 async-trait = "0.1"
 consume_api = { path = "../consume_api", version = "0.1", features = ["hyper-tls"]}
 chrono = { version = "0.4", default-features = false, features = ["serde"] }
-derive_builder = "0.11"
+derive_builder = "0.12"
 hyper = { version = "0.14", features = ["client"] }
 hyper-rustls = {version = "0.23" }
 http-serde = "1"
