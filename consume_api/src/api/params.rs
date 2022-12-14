@@ -78,7 +78,7 @@ impl ParamValue<'static> for f64 {
 impl ParamValue<'static> for DateTime<Utc> {
     fn as_value(&self) -> Cow<'static, str> {
         self.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-        .into()
+            .into()
     }
 }
 
@@ -98,9 +98,9 @@ impl<'a> FormParams<'a> {
     /// Push a single parameter.
     pub fn push<'b, K, V>(&mut self, key: K, value: V) -> &mut Self
     where
-    K: Into<Cow<'a, str>>,
-    V: ParamValue<'b>,
-    'b: 'a,
+        K: Into<Cow<'a, str>>,
+        V: ParamValue<'b>,
+        'b: 'a,
     {
         self.params.push((key.into(), value.as_value()));
         self
@@ -109,9 +109,9 @@ impl<'a> FormParams<'a> {
     /// Push a single parameter.
     pub fn push_opt<'b, K, V>(&mut self, key: K, value: Option<V>) -> &mut Self
     where
-    K: Into<Cow<'a, str>>,
-    V: ParamValue<'b>,
-    'b: 'a,
+        K: Into<Cow<'a, str>>,
+        V: ParamValue<'b>,
+        'b: 'a,
     {
         if let Some(value) = value {
             self.params.push((key.into(), value.as_value()));
@@ -122,13 +122,13 @@ impl<'a> FormParams<'a> {
     /// Push a set of parameters.
     pub fn extend<'b, I, K, V>(&mut self, iter: I) -> &mut Self
     where
-    I: Iterator<Item = (K, V)>,
-    K: Into<Cow<'a, str>>,
-    V: ParamValue<'b>,
-    'b: 'a,
+        I: Iterator<Item = (K, V)>,
+        K: Into<Cow<'a, str>>,
+        V: ParamValue<'b>,
+        'b: 'a,
     {
         self.params
-        .extend(iter.map(|(key, value)| (key.into(), value.as_value())));
+            .extend(iter.map(|(key, value)| (key.into(), value.as_value())));
         self
     }
 
@@ -136,8 +136,8 @@ impl<'a> FormParams<'a> {
     pub fn into_body(self) -> Result<Option<(&'static str, Vec<u8>)>, BodyError> {
         let body = serde_urlencoded::to_string(self.params)?;
         Ok(Some((
-                "application/x-www-form-urlencoded",
-        body.into_bytes(),
+            "application/x-www-form-urlencoded",
+            body.into_bytes(),
         )))
     }
 }
@@ -152,9 +152,9 @@ impl<'a> QueryParams<'a> {
     /// Push a single parameter.
     pub fn push<'b, K, V>(&mut self, key: K, value: V) -> &mut Self
     where
-    K: Into<Cow<'a, str>>,
-    V: ParamValue<'b>,
-    'b: 'a,
+        K: Into<Cow<'a, str>>,
+        V: ParamValue<'b>,
+        'b: 'a,
     {
         self.params.push((key.into(), value.as_value()));
         self
@@ -163,9 +163,9 @@ impl<'a> QueryParams<'a> {
     /// Push a single parameter.
     pub fn push_opt<'b, K, V>(&mut self, key: K, value: Option<V>) -> &mut Self
     where
-    K: Into<Cow<'a, str>>,
-    V: ParamValue<'b>,
-    'b: 'a,
+        K: Into<Cow<'a, str>>,
+        V: ParamValue<'b>,
+        'b: 'a,
     {
         if let Some(value) = value {
             self.params.push((key.into(), value.as_value()));
@@ -176,13 +176,13 @@ impl<'a> QueryParams<'a> {
     /// Push a set of parameters.
     pub fn extend<'b, I, K, V>(&mut self, iter: I) -> &mut Self
     where
-    I: Iterator<Item = (K, V)>,
-    K: Into<Cow<'a, str>>,
-    V: ParamValue<'b>,
-    'b: 'a,
+        I: Iterator<Item = (K, V)>,
+        K: Into<Cow<'a, str>>,
+        V: ParamValue<'b>,
+        'b: 'a,
     {
         self.params
-        .extend(iter.map(|(key, value)| (key.into(), value.as_value())));
+            .extend(iter.map(|(key, value)| (key.into(), value.as_value())));
         self
     }
 

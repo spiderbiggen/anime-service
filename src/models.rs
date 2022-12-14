@@ -150,7 +150,13 @@ pub struct DownloadGroup {
 impl From<nyaa::AnimeDownloads> for DownloadGroup {
     fn from(a: nyaa::AnimeDownloads) -> Self {
         let mut ep: Episode = a.episode.into();
-        ep.pub_date = a.downloads.iter().map(|d| d.pub_date).min().unwrap_or_default().clone();
+        ep.pub_date = a
+            .downloads
+            .iter()
+            .map(|d| d.pub_date)
+            .min()
+            .unwrap_or_default()
+            .clone();
         Self {
             episode: ep,
             downloads: a.downloads.into_iter().map(|it| it.into()).collect(),

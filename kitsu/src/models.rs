@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
-use chrono::{Utc, DateTime};
+use chrono::{DateTime, Utc};
 use serde_json::Value;
+use std::collections::BTreeMap;
 use url::Url;
 
 #[derive(Deserialize, Clone, Debug)]

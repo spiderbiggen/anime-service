@@ -13,7 +13,6 @@ use hyper_rustls::HttpsConnector;
 use once_cell::sync::Lazy;
 use serde_json::json;
 use std::{net::SocketAddr, num::ParseIntError};
-use thiserror::Error as ThisError;
 use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer, decompression::DecompressionLayer, trace::TraceLayer,
@@ -21,7 +20,7 @@ use tower_http::{
 use tracing::error;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-#[derive(Debug, ThisError)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     SerdeJsonError(#[from] serde_json::Error),
@@ -33,20 +32,21 @@ pub enum Error {
     ParseIntError(#[from] ParseIntError),
 }
 
-static HYPER: Lazy<hyper::Client<HttpsConnector<HttpConnector>>> = Lazy::new(|| {
+type HyperClient = hyper::Client<HttpsConnector<HttpConnector>>;
+
+fn create_hyper_client() -> hyper::Client<HttpsConnector<HttpConnector>> {
     let https = hyper_rustls::HttpsConnectorBuilder::new()
         .with_native_roots()
         .https_or_http()
         .enable_http1()
         .build();
     hyper::Client::builder().build(https)
-});
+}
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        error!("Request failed with {self}");
+        error!("request failed with {self}");
         let (status, error_message) = match self {
-            Self::ParseIntError(_) => (StatusCode::BAD_REQUEST, "failed to parse integer"),
             Self::Nyaa(nyaa::Error::Status(code)) => {
                 (code, code.canonical_reason().unwrap_or_default())
             }
@@ -74,6 +74,7 @@ async fn main() -> Result<(), Error> {
         .route("/series", get(anime::get_collection))
         .route("/series/:id", get(anime::get_single))
         .route("/downloads", get(downloads::get))
+        .with_state(create_hyper_client())
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())

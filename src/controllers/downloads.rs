@@ -1,4 +1,5 @@
-use crate::{models, Error, HYPER};
+use crate::{models, Error, HyperClient};
+use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::{extract::Query, response::Response, Json};
 use itertools::Itertools;
@@ -11,14 +12,17 @@ pub(crate) struct DownloadQuery {
     grouped: Option<bool>,
 }
 
-pub(crate) async fn get(Query(params): Query<DownloadQuery>) -> Response {
+pub(crate) async fn get(
+    Query(params): Query<DownloadQuery>,
+    State(hyper): State<HyperClient>,
+) -> Response {
     let title = params.title.unwrap_or("".to_owned());
     match params.grouped {
-        Some(true) => match get_groups(title).await {
+        Some(true) => match get_groups(hyper, title).await {
             Ok(groups) => groups.into_response(),
             Err(e) => e.into_response(),
         },
-        _ => match get_ungrouped(title).await {
+        _ => match get_ungrouped(hyper, title).await {
             Ok(groups) => groups.into_response(),
             Err(e) => e.into_response(),
         },
@@ -26,10 +30,11 @@ pub(crate) async fn get(Query(params): Query<DownloadQuery>) -> Response {
 }
 
 pub(crate) async fn get_ungrouped(
+    hyper: HyperClient,
     title: String,
 ) -> Result<Json<Vec<models::DirectDownload>>, Error> {
-    let episodes = nyaa::downloads(HYPER.clone(), &title).await?;
-    let result = episodes
+    let result = nyaa::downloads(hyper, &title)
+        .await?
         .into_iter()
         .map(|e| e.into())
         .sorted_by_key(|a: &models::DirectDownload| a.pub_date)
@@ -38,9 +43,12 @@ pub(crate) async fn get_ungrouped(
     Ok(Json(result))
 }
 
-pub(crate) async fn get_groups(title: String) -> Result<Json<Vec<models::DownloadGroup>>, Error> {
-    let episodes = nyaa::groups(HYPER.clone(), &title).await?;
-    let result = episodes
+pub(crate) async fn get_groups(
+    hyper: HyperClient,
+    title: String,
+) -> Result<Json<Vec<models::DownloadGroup>>, Error> {
+    let result = nyaa::groups(hyper, &title)
+        .await?
         .into_iter()
         .map(|e| e.into())
         .sorted_by_key(|a: &models::DownloadGroup| a.episode.pub_date)
