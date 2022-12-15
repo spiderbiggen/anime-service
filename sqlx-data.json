@@ -1,6 +1,6 @@
 {
   "db": "PostgreSQL",
-  "4e5b4e262bfdef689a4076897b1702bea2f7793e9be78a7c9f7ce5df2277f37c": {
+  "a9221c2b2953e9bd80474ef245091f6c01a876a7a54b1b9fb7de5feecebd78b3": {
     "describe": {
       "columns": [
         {
@@ -22,9 +22,9 @@
         ]
       }
     },
-    "query": "INSERT INTO episode_download (title, episode, decimal, version, created_at)\r\nVALUES ($1, $2, $3, $4, $5)\r\nON CONFLICT DO NOTHING\r\nRETURNING id"
+    "query": "INSERT INTO episode_download (title, episode, decimal, version, created_at)\nVALUES ($1, $2, $3, $4, $5)\nON CONFLICT DO NOTHING\nRETURNING id"
   },
-  "c6b2e65b6831393a3332751cd3788a22b07b1aa213f0cff0d513ffdd22ad9454": {
+  "cc3d550f2941462cab3aed632789689ef8f24027a4e586cf1276f6b787a55c4a": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -40,6 +40,6 @@
         ]
       }
     },
-    "query": "INSERT INTO episode_download_resolution (episode_download_id, resolution, torrent, file_name, comments, magnet, created_at)\r\nVALUES ($1, $2, $3, $4, $5, $6, $7)\r\nON CONFLICT DO NOTHING"
+    "query": "INSERT INTO episode_download_resolution (episode_download_id, resolution, torrent, file_name, comments, magnet, created_at)\nVALUES ($1, $2, $3, $4, $5, $6, $7)\nON CONFLICT DO NOTHING"
   }
 }
