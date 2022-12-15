@@ -1,7 +1,9 @@
 mod controllers;
+mod jobs;
 mod models;
 
 use crate::controllers::{anime, downloads};
+use crate::jobs::poll::Poll;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -10,9 +12,11 @@ use axum::{
 };
 use hyper::client::HttpConnector;
 use hyper_rustls::HttpsConnector;
-use once_cell::sync::Lazy;
 use serde_json::json;
-use std::{net::SocketAddr, num::ParseIntError};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::{Pool, Postgres};
+use std::{env, net::SocketAddr, num::ParseIntError};
+use tokio::task::JoinHandle;
 use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer, decompression::DecompressionLayer, trace::TraceLayer,
@@ -30,6 +34,14 @@ pub enum Error {
     Nyaa(#[from] nyaa::Error),
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
+    #[error(transparent)]
+    VarError(#[from] env::VarError),
+    #[error(transparent)]
+    SqlError(#[from] sqlx::Error),
+    #[error(transparent)]
+    JoinError(#[from] tokio::task::JoinError),
+    #[error(transparent)]
+    MigrateError(#[from] sqlx::migrate::MigrateError),
 }
 
 type HyperClient = hyper::Client<HttpsConnector<HttpConnector>>;
@@ -62,6 +74,27 @@ impl IntoResponse for Error {
     }
 }
 
+async fn create_db_pool() -> Result<Pool<Postgres>, Error> {
+    let user = env::var("PG_USER")?;
+    let pass = env::var("PG_PASS")?;
+    let host = env::var("PG_HOST")?;
+    let port = env::var("PG_PORT")?.parse::<u32>()?;
+    let database = env::var("PG_DATABASE")?;
+    let url = format!("postgres://{user}:{pass}@{host}:{port}/{database}");
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&url)
+        .await?;
+    Ok(pool)
+}
+
+fn start_jobs(client: HyperClient, pool: Pool<Postgres>) -> JoinHandle<()> {
+    tokio::task::spawn(async move {
+        let poller = Poll::new(client.clone(), pool.clone());
+        poller.run().await;
+    })
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // initialize tracing
@@ -69,12 +102,20 @@ async fn main() -> Result<(), Error> {
         .with(tracing_subscriber::EnvFilter::from_default_env())
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    let client = create_hyper_client();
+    let pool = create_db_pool().await?;
+
+    sqlx::migrate!().run(&pool).await?;
+
+    let jobs = start_jobs(client.clone(), pool.clone());
     // our router
     let app = Router::new()
         .route("/series", get(anime::get_collection))
         .route("/series/:id", get(anime::get_single))
         .route("/downloads", get(downloads::get))
-        .with_state(create_hyper_client())
+        .with_state(client)
+        .with_state(pool)
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -88,5 +129,6 @@ async fn main() -> Result<(), Error> {
         .serve(app.into_make_service())
         .await
         .unwrap();
+    tokio::try_join!(jobs)?;
     Ok(())
 }
