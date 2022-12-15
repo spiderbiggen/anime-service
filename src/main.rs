@@ -23,6 +23,7 @@ use tower_http::{
 };
 use tracing::error;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use url::Url;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -42,6 +43,8 @@ pub enum Error {
     JoinError(#[from] tokio::task::JoinError),
     #[error(transparent)]
     MigrateError(#[from] sqlx::migrate::MigrateError),
+    #[error(transparent)]
+    UrlParseError(#[from] url::ParseError),
 }
 
 type HyperClient = hyper::Client<HttpsConnector<HttpConnector>>;
@@ -75,15 +78,23 @@ impl IntoResponse for Error {
 }
 
 async fn create_db_pool() -> Result<Pool<Postgres>, Error> {
-    let user = env::var("PG_USER")?;
-    let pass = env::var("PG_PASS")?;
-    let host = env::var("PG_HOST")?;
-    let port = env::var("PG_PORT")?.parse::<u32>()?;
-    let database = env::var("PG_DATABASE")?;
-    let url = format!("postgres://{user}:{pass}@{host}:{port}/{database}");
+    let mut url = Url::parse("postgres://")?;
+    url.set_host(Some(&env::var("PG_HOST")?))?;
+    url.set_password(env::var("PG_PASS").ok().as_deref())
+        .expect("password should be accepted");
+    if let Ok(u) = env::var("PG_USER") {
+        url.set_username(&u).expect("password should be accepted");
+    }
+    if let Ok(port) = env::var("PG_PORT") {
+        url.set_port(Some(port.parse::<u16>()?))
+            .expect("port should be accepted");
+    }
+    url.join(&env::var("PG_DATABASE")?)
+        .expect("port should be accepted");
+
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect(&url)
+        .connect(&url.to_string())
         .await?;
     Ok(pool)
 }
