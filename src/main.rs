@@ -89,8 +89,7 @@ async fn create_db_pool() -> Result<Pool<Postgres>, Error> {
         url.set_port(Some(port.parse::<u16>()?))
             .expect("port should be accepted");
     }
-    url.join(&env::var("PG_DATABASE")?)
-        .expect("port should be accepted");
+    url.set_path(&env::var("PG_DATABASE")?);
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
