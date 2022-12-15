@@ -1,0 +1,45 @@
+{
+  "db": "PostgreSQL",
+  "4e5b4e262bfdef689a4076897b1702bea2f7793e9be78a7c9f7ce5df2277f37c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO episode_download (title, episode, decimal, version, created_at)\r\nVALUES ($1, $2, $3, $4, $5)\r\nON CONFLICT DO NOTHING\r\nRETURNING id"
+  },
+  "c6b2e65b6831393a3332751cd3788a22b07b1aa213f0cff0d513ffdd22ad9454": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Text",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO episode_download_resolution (episode_download_id, resolution, torrent, file_name, comments, magnet, created_at)\r\nVALUES ($1, $2, $3, $4, $5, $6, $7)\r\nON CONFLICT DO NOTHING"
+  }
+}
