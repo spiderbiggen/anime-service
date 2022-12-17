@@ -1,3 +1,6 @@
+use crate::errors::InternalError;
+use crate::sql_models;
+use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use kitsu::models as kitsu;
 use serde::Serialize;
@@ -188,6 +191,32 @@ impl From<nyaa::Episode> for Episode {
     }
 }
 
+impl TryFrom<sql_models::Episode> for Episode {
+    type Error = InternalError;
+
+    fn try_from(a: sql_models::Episode) -> Result<Self, Self::Error> {
+        let ep = match a.episode {
+            Some(i) => Some(i.try_into()?),
+            None => None,
+        };
+        let dec = match a.decimal {
+            Some(i) => Some(i.try_into()?),
+            None => None,
+        };
+        let ver = match a.version {
+            Some(i) => Some(i.try_into()?),
+            None => None,
+        };
+        Ok(Self {
+            title: a.title,
+            episode: ep,
+            decimal: dec,
+            version: ver,
+            pub_date: a.created_at,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Download {
     pub comments: String,
@@ -206,6 +235,22 @@ impl From<nyaa::Download> for Download {
             file_name: a.file_name,
             pub_date: a.pub_date,
         }
+    }
+}
+
+impl TryFrom<sql_models::Download> for Download {
+    type Error = InternalError;
+
+    fn try_from(a: sql_models::Download) -> Result<Self, Self::Error> {
+        Ok(Self {
+            comments: a
+                .comments
+                .ok_or(anyhow!("required Download.comments was None"))?,
+            resolution: a.resolution,
+            torrent: a.torrent,
+            file_name: a.file_name,
+            pub_date: a.created_at,
+        })
     }
 }
 

@@ -1,58 +1,56 @@
-use crate::{models, Error, HyperClient};
+use crate::errors::{Error, InternalError};
+use crate::{models, sql_models};
 use axum::extract::State;
-use axum::response::IntoResponse;
-use axum::{extract::Query, response::Response, Json};
-use itertools::Itertools;
+use axum::{extract::Query, Json};
 use serde::Deserialize;
+use sqlx::query_builder::QueryBuilder;
+use sqlx::{Pool, Postgres};
 use std::result::Result;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct DownloadQuery {
     title: Option<String>,
-    grouped: Option<bool>,
 }
 
 pub(crate) async fn get(
     Query(params): Query<DownloadQuery>,
-    State(hyper): State<HyperClient>,
-) -> Response {
-    let title = params.title.unwrap_or("".to_owned());
-    match params.grouped {
-        Some(true) => match get_groups(hyper, title).await {
-            Ok(groups) => groups.into_response(),
-            Err(e) => e.into_response(),
-        },
-        _ => match get_ungrouped(hyper, title).await {
-            Ok(groups) => groups.into_response(),
-            Err(e) => e.into_response(),
-        },
-    }
-}
-
-pub(crate) async fn get_ungrouped(
-    hyper: HyperClient,
-    title: String,
-) -> Result<Json<Vec<models::DirectDownload>>, Error> {
-    let result = nyaa::downloads(hyper, &title)
-        .await?
-        .into_iter()
-        .map(|e| e.into())
-        .sorted_by_key(|a: &models::DirectDownload| a.pub_date)
-        .rev()
-        .collect();
-    Ok(Json(result))
-}
-
-pub(crate) async fn get_groups(
-    hyper: HyperClient,
-    title: String,
+    State(pool): State<Pool<Postgres>>,
 ) -> Result<Json<Vec<models::DownloadGroup>>, Error> {
-    let result = nyaa::groups(hyper, &title)
-        .await?
-        .into_iter()
-        .map(|e| e.into())
-        .sorted_by_key(|a: &models::DownloadGroup| a.episode.pub_date)
-        .rev()
-        .collect();
-    Ok(Json(result))
+    Ok(Json(get_groups(pool, params.title.as_deref()).await?))
+}
+
+async fn get_groups(
+    pool: Pool<Postgres>,
+    title: Option<&str>,
+) -> Result<Vec<models::DownloadGroup>, InternalError> {
+    let mut qb = QueryBuilder::new("SELECT * FROM episode_download");
+    let mut has_where = false;
+    if let Some(title) = title {
+        qb.push(if has_where { " AND " } else { " WHERE " })
+            .push("title ILIKE ")
+            .push_bind(title);
+    }
+    let query = qb
+        .push(" ORDER BY created_at DESC ")
+        .push(" LIMIT 25 ")
+        .build_query_as::<sql_models::Episode>();
+    let rows = query.fetch_all(&pool).await?;
+    let mut result = Vec::<models::DownloadGroup>::with_capacity(rows.len());
+    for row in rows {
+        let resolutions = sqlx::query_as!(
+            sql_models::Download,
+            "SELECT * FROM episode_download_resolution WHERE episode_download_id = $1",
+            row.id,
+        )
+        .fetch_all(&pool)
+        .await?;
+        result.push(models::DownloadGroup {
+            episode: row.try_into()?,
+            downloads: resolutions
+                .into_iter()
+                .map(|a| a.try_into())
+                .collect::<Result<Vec<_>, InternalError>>()?,
+        })
+    }
+    Ok(result)
 }

@@ -1,53 +1,47 @@
 mod controllers;
+mod errors;
 mod jobs;
 mod models;
+mod sql_models;
 
 use crate::controllers::{anime, downloads};
-use crate::jobs::poll::Poll;
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::get,
-    Json, Router,
-};
+use axum::extract::FromRef;
+use axum::{routing::get, Router};
 use hyper::client::HttpConnector;
 use hyper_rustls::HttpsConnector;
-use serde_json::json;
+
+use crate::errors::InternalError;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
-use std::{env, net::SocketAddr, num::ParseIntError};
-use tokio::task::JoinHandle;
+use std::{env, net::SocketAddr};
 use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer, decompression::DecompressionLayer, trace::TraceLayer,
 };
-use tracing::error;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error(transparent)]
-    SerdeJsonError(#[from] serde_json::Error),
-    #[error(transparent)]
-    Kitsu(#[from] kitsu::Error),
-    #[error(transparent)]
-    Nyaa(#[from] nyaa::Error),
-    #[error(transparent)]
-    ParseIntError(#[from] ParseIntError),
-    #[error(transparent)]
-    VarError(#[from] env::VarError),
-    #[error(transparent)]
-    SqlError(#[from] sqlx::Error),
-    #[error(transparent)]
-    JoinError(#[from] tokio::task::JoinError),
-    #[error(transparent)]
-    MigrateError(#[from] sqlx::migrate::MigrateError),
-    #[error(transparent)]
-    UrlParseError(#[from] url::ParseError),
+#[derive(Debug, Clone)]
+struct AppState {
+    client: HyperClient,
+    pool: DBPool,
 }
 
 type HyperClient = hyper::Client<HttpsConnector<HttpConnector>>;
+
+impl FromRef<AppState> for HyperClient {
+    fn from_ref(input: &AppState) -> Self {
+        input.client.clone()
+    }
+}
+
+type DBPool = Pool<Postgres>;
+
+impl FromRef<AppState> for DBPool {
+    fn from_ref(input: &AppState) -> Self {
+        input.pool.clone()
+    }
+}
 
 fn create_hyper_client() -> hyper::Client<HttpsConnector<HttpConnector>> {
     let https = hyper_rustls::HttpsConnectorBuilder::new()
@@ -58,26 +52,7 @@ fn create_hyper_client() -> hyper::Client<HttpsConnector<HttpConnector>> {
     hyper::Client::builder().build(https)
 }
 
-impl IntoResponse for Error {
-    fn into_response(self) -> Response {
-        error!("request failed with {self}");
-        let (status, error_message) = match self {
-            Self::Nyaa(nyaa::Error::Status(code)) => {
-                (code, code.canonical_reason().unwrap_or_default())
-            }
-            Self::Kitsu(kitsu::Error::Status(code)) => {
-                (code, code.canonical_reason().unwrap_or_default())
-            }
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal server error"),
-        };
-        let body = Json(json!({
-            "error": error_message,
-        }));
-        (status, body).into_response()
-    }
-}
-
-async fn create_db_pool() -> Result<Pool<Postgres>, Error> {
+async fn create_db_pool() -> Result<Pool<Postgres>, InternalError> {
     let mut url = Url::parse("postgres://")?;
     url.set_host(Some(&env::var("PG_HOST")?))?;
     url.set_password(env::var("PG_PASS").ok().as_deref())
@@ -98,15 +73,8 @@ async fn create_db_pool() -> Result<Pool<Postgres>, Error> {
     Ok(pool)
 }
 
-fn start_jobs(client: HyperClient, pool: Pool<Postgres>) -> JoinHandle<()> {
-    tokio::task::spawn(async move {
-        let poller = Poll::new(client.clone(), pool.clone());
-        poller.run().await;
-    })
-}
-
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), InternalError> {
     // initialize tracing
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::from_default_env())
@@ -118,14 +86,14 @@ async fn main() -> Result<(), Error> {
 
     sqlx::migrate!().run(&pool).await?;
 
-    let jobs = start_jobs(client.clone(), pool.clone());
+    let poller_job = jobs::poller::start(client.clone(), pool.clone());
+    let app_state = AppState { client, pool };
     // our router
     let app = Router::new()
         .route("/series", get(anime::get_collection))
         .route("/series/:id", get(anime::get_single))
         .route("/downloads", get(downloads::get))
-        .with_state(client)
-        .with_state(pool)
+        .with_state(app_state)
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -139,6 +107,6 @@ async fn main() -> Result<(), Error> {
         .serve(app.into_make_service())
         .await
         .unwrap();
-    tokio::try_join!(jobs)?;
+    tokio::try_join!(poller_job)?;
     Ok(())
 }

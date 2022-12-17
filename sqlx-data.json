@@ -41,5 +41,91 @@
       }
     },
     "query": "INSERT INTO episode_download_resolution (episode_download_id, resolution, torrent, file_name, comments, magnet, created_at)\nVALUES ($1, $2, $3, $4, $5, $6, $7)\nON CONFLICT DO NOTHING"
+  },
+  "e04a1850ed060141b5f75a89f7afdcbc0b16b99ab0b9b14862f3f6ebebfeafa5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "episode_download_id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resolution",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "torrent",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "file_name",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "comments",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "magnet",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT * FROM episode_download_resolution WHERE episode_download_id = $1"
+  },
+  "f7ad5ce6083c2188b258d516ed00072e4a6510a8bb6b5683c54ca048f3426d6f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resolutions",
+          "ordinal": 1,
+          "type_info": "VarcharArray"
+        }
+      ],
+      "nullable": [
+        false,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT ed.id, array_agg(edr.resolution) as resolutions\nFROM episode_download ed\n         JOIN episode_download_resolution edr on ed.id = edr.episode_download_id\nWHERE provider = COALESCE($1, 'SubsPlease')\n  AND ed.title = $2\n  AND COALESCE(ed.episode, -1) = COALESCE($3, -1)\n  AND COALESCE(ed.decimal, -1) = COALESCE($4, -1)\n  AND COALESCE(ed.version, -1) = COALESCE($5, -1)\nGROUP BY id"
   }
 }

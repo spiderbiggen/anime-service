@@ -3,7 +3,8 @@ use axum::{extract::Path, Json};
 use std::num::ParseIntError;
 use std::result::Result;
 
-use crate::{models, Error, HyperClient};
+use crate::errors::Error;
+use crate::{models, HyperClient};
 
 pub async fn get_single(
     Path(id): Path<u32>,
