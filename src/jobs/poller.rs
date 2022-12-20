@@ -83,7 +83,7 @@ impl Poller {
                 group.episode.episode.map(|e| e as i32),
                 group.episode.decimal.map(|e| e as i32),
                 group.episode.version.map(|e| e as i32),
-                group.episode.pub_date,
+                group.episode.published_date,
             )
             .fetch_one(&self.database)
             .await?
@@ -111,7 +111,7 @@ impl Poller {
                         Some(&download.file_name),
                         download.comments,
                         Option::<String>::None,
-                        download.pub_date,
+                        download.published_date,
                     )
                     .execute(&self.database)
                     .await;

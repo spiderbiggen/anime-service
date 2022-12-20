@@ -153,7 +153,7 @@ pub struct DownloadGroup {
 impl From<nyaa::AnimeDownloads> for DownloadGroup {
     fn from(a: nyaa::AnimeDownloads) -> Self {
         let mut ep: Episode = a.episode.into();
-        ep.pub_date = a
+        ep.published_date = a
             .downloads
             .iter()
             .map(|d| d.pub_date)
@@ -167,6 +167,21 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
     }
 }
 
+impl TryFrom<sql_models::EpisodeWithResolutions> for DownloadGroup {
+    type Error = InternalError;
+
+    fn try_from(a: sql_models::EpisodeWithResolutions) -> Result<Self, Self::Error> {
+        Ok(Self {
+            episode: a.episode.try_into()?,
+            downloads: a
+                .resolutions
+                .into_iter()
+                .map(|it| it.try_into())
+                .collect::<Result<_, _>>()?,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Episode {
     pub title: String,
@@ -176,7 +191,7 @@ pub struct Episode {
     pub decimal: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<u32>,
-    pub pub_date: DateTime<Utc>,
+    pub published_date: DateTime<Utc>,
 }
 
 impl From<nyaa::Episode> for Episode {
@@ -186,7 +201,7 @@ impl From<nyaa::Episode> for Episode {
             episode: a.episode,
             decimal: a.decimal,
             version: a.version,
-            pub_date: Default::default(),
+            published_date: Default::default(),
         }
     }
 }
@@ -212,7 +227,7 @@ impl TryFrom<sql_models::Episode> for Episode {
             episode: ep,
             decimal: dec,
             version: ver,
-            pub_date: a.created_at,
+            published_date: a.created_at,
         })
     }
 }
@@ -223,7 +238,7 @@ pub struct Download {
     pub resolution: String,
     pub torrent: String,
     pub file_name: String,
-    pub pub_date: DateTime<Utc>,
+    pub published_date: DateTime<Utc>,
 }
 
 impl From<nyaa::Download> for Download {
@@ -233,7 +248,7 @@ impl From<nyaa::Download> for Download {
             resolution: a.resolution,
             torrent: a.torrent,
             file_name: a.file_name,
-            pub_date: a.pub_date,
+            published_date: a.pub_date,
         }
     }
 }
@@ -249,7 +264,7 @@ impl TryFrom<sql_models::Download> for Download {
             resolution: a.resolution,
             torrent: a.torrent,
             file_name: a.file_name,
-            pub_date: a.created_at,
+            published_date: a.created_at,
         })
     }
 }
@@ -267,7 +282,7 @@ pub struct DirectDownload {
     pub resolution: String,
     pub torrent: String,
     pub file_name: String,
-    pub pub_date: DateTime<Utc>,
+    pub published_date: DateTime<Utc>,
 }
 
 impl From<nyaa::NyaaEntry> for DirectDownload {
@@ -281,7 +296,7 @@ impl From<nyaa::NyaaEntry> for DirectDownload {
             resolution: a.resolution,
             torrent: a.torrent,
             file_name: a.file_name,
-            pub_date: a.pub_date,
+            published_date: a.pub_date,
         }
     }
 }

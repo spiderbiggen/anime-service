@@ -28,4 +28,5 @@ tower-http = { version = "0.3", features = ["trace", "decompression-full", "comp
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio = { version = "1.21.2", features = ["full"] }
+tokio-stream = "0.1.11"
 url = { version = "2", features = ["serde"] }

@@ -2,6 +2,12 @@ use chrono::{DateTime, Utc};
 use sqlx::types::Uuid;
 
 #[derive(Debug, sqlx::FromRow)]
+pub struct EpisodeWithResolutions {
+    pub episode: Episode,
+    pub resolutions: Vec<Download>,
+}
+
+#[derive(Debug, sqlx::FromRow)]
 pub struct Episode {
     pub id: Uuid,
     pub title: String,
