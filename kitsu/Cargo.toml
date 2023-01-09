@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1"
-consume_api = { path = "../consume_api", version = "0.1", features = ["hyper-tls"]}
+consume_api = { path = "../consume-api", version = "0.1", features = ["hyper-tls"]}
 chrono = { version = "0.4", default-features = false, features = ["serde"] }
 derive_builder = "0.12"
 hyper = { version = "0.14", features = ["client"] }
