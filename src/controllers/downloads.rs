@@ -45,7 +45,7 @@ async fn get_groups(
         return Ok(Vec::new());
     }
     let iter = rows.into_iter().map(|r| {
-        let id = r.id.clone();
+        let id = r.id;
         let group = EpisodeWithResolutions {
             episode: r,
             resolutions: vec![],
@@ -61,7 +61,9 @@ async fn get_groups(
         separated.push_bind(id);
     }
     separated.push_unseparated(")");
-    qb.push(" ORDER BY array_position(array['2160p', '1080p', '720p', '480p'], resolution)");
+    qb.push(
+        " ORDER BY array_position(array['2160p', '1080p', '720p', '540p', '480p'], resolution)",
+    );
     let query = qb.build_query_as::<sql_models::Download>();
     let mut stream = query.fetch(&pool);
     while let Some(row) = stream.next().await {
@@ -71,8 +73,8 @@ async fn get_groups(
         }
     }
     let mut episodes = map
-        .into_iter()
-        .map(|(_, v)| v.try_into())
+        .into_values()
+        .map(|v| v.try_into())
         .collect::<Result<Vec<models::DownloadGroup>, _>>()?;
     episodes.sort_by_key(|ep| Reverse(ep.episode.published_date));
     Ok(episodes)
