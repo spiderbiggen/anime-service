@@ -1,8 +1,8 @@
 mod controllers;
+mod datasource;
 mod errors;
 mod jobs;
 mod models;
-mod sql_models;
 
 use crate::controllers::{anime, downloads};
 use axum::extract::FromRef;
