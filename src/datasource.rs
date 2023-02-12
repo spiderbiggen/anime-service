@@ -1,15 +1,15 @@
-mod models {
+pub mod models {
     use chrono::{DateTime, Utc};
     use sqlx::types::Uuid;
 
     #[derive(Debug, sqlx::FromRow)]
-    pub(super) struct EpisodeWithResolutions {
+    pub struct EpisodeWithResolutions {
         pub episode: Episode,
         pub resolutions: Vec<Download>,
     }
 
     #[derive(Debug, sqlx::FromRow)]
-    pub(super) struct Episode {
+    pub struct Episode {
         pub id: Uuid,
         pub title: String,
         pub episode: Option<i32>,
@@ -19,7 +19,7 @@ mod models {
     }
 
     #[derive(Debug, sqlx::FromRow)]
-    pub(super) struct Download {
+    pub struct Download {
         pub episode_download_id: Uuid,
         pub resolution: String,
         pub torrent: String,

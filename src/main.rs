@@ -68,7 +68,7 @@ async fn create_db_pool() -> Result<Pool<Postgres>, InternalError> {
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect(&url.to_string())
+        .connect(url.as_ref())
         .await?;
     Ok(pool)
 }

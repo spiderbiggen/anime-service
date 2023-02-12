@@ -8,15 +8,15 @@ use tracing::error;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    SerdeJsonError(#[from] serde_json::Error),
+    SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     Kitsu(#[from] kitsu::Error),
     #[error(transparent)]
     Nyaa(#[from] nyaa::Error),
     #[error(transparent)]
-    ParseIntError(#[from] ParseIntError),
+    ParseInt(#[from] ParseIntError),
     #[error(transparent)]
-    InternalError(#[from] InternalError),
+    Internal(#[from] InternalError),
 }
 
 impl IntoResponse for Error {

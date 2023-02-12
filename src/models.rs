@@ -1,10 +1,14 @@
-use crate::errors::InternalError;
+use std::num::ParseIntError;
+
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
-use kitsu::models as kitsu;
 use serde::Serialize;
-use std::num::ParseIntError;
 use url::Url;
+
+use kitsu::models as kitsu;
+
+use crate::datasource;
+use crate::errors::InternalError;
 
 #[derive(Serialize, Copy, Clone, Debug)]
 pub struct ImageDimension {
@@ -157,8 +161,7 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
             .iter()
             .map(|d| d.pub_date)
             .min()
-            .unwrap_or_default()
-            .clone();
+            .unwrap_or_default();
         Self {
             episode: ep,
             downloads: a.downloads.into_iter().map(|it| it.into()).collect(),
@@ -166,10 +169,10 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
     }
 }
 
-impl TryFrom<sql_models::EpisodeWithResolutions> for DownloadGroup {
+impl TryFrom<datasource::models::EpisodeWithResolutions> for DownloadGroup {
     type Error = InternalError;
 
-    fn try_from(a: sql_models::EpisodeWithResolutions) -> Result<Self, Self::Error> {
+    fn try_from(a: datasource::models::EpisodeWithResolutions) -> Result<Self, Self::Error> {
         Ok(Self {
             episode: a.episode.try_into()?,
             downloads: a
@@ -205,10 +208,10 @@ impl From<nyaa::Episode> for Episode {
     }
 }
 
-impl TryFrom<sql_models::Episode> for Episode {
+impl TryFrom<datasource::models::Episode> for Episode {
     type Error = InternalError;
 
-    fn try_from(a: sql_models::Episode) -> Result<Self, Self::Error> {
+    fn try_from(a: datasource::models::Episode) -> Result<Self, Self::Error> {
         let ep = match a.episode {
             Some(i) => Some(i.try_into()?),
             None => None,
@@ -252,10 +255,10 @@ impl From<nyaa::Download> for Download {
     }
 }
 
-impl TryFrom<sql_models::Download> for Download {
+impl TryFrom<datasource::models::Download> for Download {
     type Error = InternalError;
 
-    fn try_from(a: sql_models::Download) -> Result<Self, Self::Error> {
+    fn try_from(a: datasource::models::Download) -> Result<Self, Self::Error> {
         Ok(Self {
             comments: a
                 .comments
