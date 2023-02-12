@@ -1,6 +1,6 @@
 {
   "db": "PostgreSQL",
-  "a9221c2b2953e9bd80474ef245091f6c01a876a7a54b1b9fb7de5feecebd78b3": {
+  "1072220d195b394ac0ac3376b2b995817ee10a1071112c7fe194e16722178ab1": {
     "describe": {
       "columns": [
         {
@@ -18,11 +18,12 @@
           "Int4",
           "Int4",
           "Int4",
+          "Timestamptz",
           "Timestamptz"
         ]
       }
     },
-    "query": "INSERT INTO episode_download (title, episode, decimal, version, created_at)\nVALUES ($1, $2, $3, $4, $5)\nON CONFLICT DO NOTHING\nRETURNING id"
+    "query": "INSERT INTO episode_download (title, episode, decimal, version, created_at, updated_at)\nVALUES ($1, $2, $3, $4, $5, $6)\nON CONFLICT DO NOTHING\nRETURNING id"
   },
   "cc3d550f2941462cab3aed632789689ef8f24027a4e586cf1276f6b787a55c4a": {
     "describe": {

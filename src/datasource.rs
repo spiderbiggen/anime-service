@@ -16,6 +16,7 @@ pub mod models {
         pub decimal: Option<i32>,
         pub version: Option<i32>,
         pub created_at: DateTime<Utc>,
+        pub updated_at: DateTime<Utc>,
     }
 
     #[derive(Debug, sqlx::FromRow)]
@@ -98,7 +99,7 @@ pub mod repositories {
                 .into_values()
                 .map(|v| v.try_into())
                 .collect::<Result<Vec<models::DownloadGroup>, _>>()?;
-            episodes.sort_by_key(|ep| Reverse(ep.episode.published_date));
+            episodes.sort_by_key(|ep| Reverse(ep.episode.updated_at));
             Ok(episodes)
         }
 

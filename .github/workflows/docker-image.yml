@@ -121,7 +121,7 @@ jobs:
         with:
           url: ${{secrets.DEPLOY_AUTH_URL}}
           method: 'POST'
-          timeout: 5000
+          timeout: 30000
           data: >-
             {
               "grant_type":"password",
@@ -139,5 +139,5 @@ jobs:
         with:
           url: "${{secrets.DEPLOY_URL}}?image=${{needs.publish.outputs.tag}}"
           method: 'PATCH'
-          timeout: 5000
+          timeout: 30000
           bearerToken: ${{ fromJson(steps.token.outputs.response).access_token }}

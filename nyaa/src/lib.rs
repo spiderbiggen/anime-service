@@ -1,9 +1,10 @@
+use std::{borrow::Borrow, collections::HashMap};
+
 use chrono::{DateTime, Utc};
 use hyper::client::connect::Connect;
 use hyper::http::StatusCode;
 use regex::Regex;
 use rss::{Channel, Item};
-use std::{borrow::Borrow, collections::HashMap};
 use url::Url;
 
 #[derive(Debug, thiserror::Error)]
@@ -202,18 +203,18 @@ impl TitleParts {
     where
         S: Into<String>,
     {
-        inp.and_then(|s| Some(s.into()))
+        inp.map(|s| s.into())
             .as_ref()
             .and_then(|title| regex.captures(title))
             .and_then(|cap| {
                 let episode: Option<u32> = cap.get(2).and_then(|a| a.as_str().parse::<u32>().ok());
                 let decimal: Option<u32> = cap.get(3).and_then(|a| a.as_str().parse::<u32>().ok());
                 let version: Option<u32> = cap.get(4).and_then(|a| a.as_str().parse::<u32>().ok());
-                let resolution: String = cap.get(5).unwrap().as_str().to_string();
+                let resolution: String = cap.get(5)?.as_str().to_string();
 
                 Some(TitleParts(
-                    cap[0].into(),
-                    cap[1].into(),
+                    cap.get(0)?.as_str().to_string(),
+                    cap.get(1)?.as_str().to_string(),
                     resolution,
                     episode,
                     decimal,
@@ -226,24 +227,21 @@ impl TitleParts {
 fn to_anime(item: Item, regex: &Regex) -> Option<NyaaEntry> {
     let date = item
         .pub_date
-        .as_ref()
-        .and_then(|str| DateTime::parse_from_rfc2822(str).ok())?;
+        .and_then(|str| DateTime::parse_from_rfc2822(&str).ok())?;
     let link = item.link?;
     let comments: String = item.guid?.value;
 
-    TitleParts::from_string(item.title, regex).and_then(
-        |TitleParts(file_name, title, resolution, episode, decimal, version)| {
-            Some(NyaaEntry {
-                episode,
-                decimal,
-                comments,
-                version,
-                resolution,
-                title,
-                file_name,
-                torrent: link,
-                pub_date: date.with_timezone(&Utc),
-            })
+    TitleParts::from_string(item.title, regex).map(
+        |TitleParts(file_name, title, resolution, episode, decimal, version)| NyaaEntry {
+            episode,
+            decimal,
+            comments,
+            version,
+            resolution,
+            title,
+            file_name,
+            torrent: link,
+            pub_date: date.with_timezone(&Utc),
         },
     )
 }

@@ -156,11 +156,17 @@ pub struct DownloadGroup {
 impl From<nyaa::AnimeDownloads> for DownloadGroup {
     fn from(a: nyaa::AnimeDownloads) -> Self {
         let mut ep: Episode = a.episode.into();
-        ep.published_date = a
+        ep.created_at = a
             .downloads
             .iter()
             .map(|d| d.pub_date)
             .min()
+            .unwrap_or_default();
+        ep.updated_at = a
+            .downloads
+            .iter()
+            .map(|d| d.pub_date)
+            .max()
             .unwrap_or_default();
         Self {
             episode: ep,
@@ -193,7 +199,8 @@ pub struct Episode {
     pub decimal: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<u32>,
-    pub published_date: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<nyaa::Episode> for Episode {
@@ -203,7 +210,8 @@ impl From<nyaa::Episode> for Episode {
             episode: a.episode,
             decimal: a.decimal,
             version: a.version,
-            published_date: Default::default(),
+            created_at: Default::default(),
+            updated_at: Default::default(),
         }
     }
 }
@@ -229,7 +237,8 @@ impl TryFrom<datasource::models::Episode> for Episode {
             episode: ep,
             decimal: dec,
             version: ver,
-            published_date: a.created_at,
+            created_at: a.created_at,
+            updated_at: a.updated_at,
         })
     }
 }

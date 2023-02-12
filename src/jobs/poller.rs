@@ -83,7 +83,8 @@ impl Poller {
                 group.episode.episode.map(|e| e as i32),
                 group.episode.decimal.map(|e| e as i32),
                 group.episode.version.map(|e| e as i32),
-                group.episode.published_date,
+                group.episode.created_at,
+                group.episode.updated_at,
             )
             .fetch_one(&self.database)
             .await?
