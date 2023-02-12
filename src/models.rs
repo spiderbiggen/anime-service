@@ -1,5 +1,4 @@
 use crate::errors::InternalError;
-use crate::sql_models;
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use kitsu::models as kitsu;
