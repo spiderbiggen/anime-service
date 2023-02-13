@@ -9,18 +9,13 @@ use datasource::repository;
 use crate::datasource;
 use crate::models::DownloadGroup;
 use crate::request_cache::RequestCache;
-use crate::state::{DBPool, HyperClient};
+use crate::state::{AppState, DBPool, HyperClient};
 
 const DEFAULT_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
-pub(crate) fn start(
-    client: HyperClient,
-    pool: DBPool,
-    cache: RequestCache<Vec<DownloadGroup>>,
-) -> JoinHandle<()> {
+pub(crate) fn start(state: AppState) -> JoinHandle<()> {
     tokio::task::spawn(async move {
-        let poller = Poller::new(client, pool, cache);
-        poller.run().await;
+        Poller::new(state).run().await;
     })
 }
 
@@ -33,15 +28,11 @@ pub(crate) struct Poller {
 }
 
 impl Poller {
-    pub fn new(
-        client: HyperClient,
-        database: DBPool,
-        cache: RequestCache<Vec<DownloadGroup>>,
-    ) -> Self {
+    pub fn new(state: AppState) -> Self {
         Self {
-            client,
-            database,
-            cache,
+            client: state.client,
+            database: state.pool,
+            cache: state.downloads_cache,
             interval: DEFAULT_INTERVAL,
         }
     }

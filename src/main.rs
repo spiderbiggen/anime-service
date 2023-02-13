@@ -1,17 +1,16 @@
 use std::net::SocketAddr;
 
 use axum::{routing::get, Router};
-use chrono::Duration;
 use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer, decompression::DecompressionLayer, trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use state::AppState;
+
 use crate::controllers::{anime, downloads};
 use crate::errors::InternalError;
-use crate::models::DownloadGroup;
-use crate::request_cache::RequestCache;
 
 mod controllers;
 mod datasource;
@@ -29,18 +28,10 @@ async fn main() -> Result<(), InternalError> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let client = state::create_hyper_client();
-    let pool = state::create_db_pool().await?;
-    let downloads_cache = RequestCache::<Vec<DownloadGroup>>::new(Duration::minutes(5));
+    let app_state = AppState::default();
+    sqlx::migrate!().run(&app_state.pool).await?;
+    jobs::poller::start(app_state.clone());
 
-    sqlx::migrate!().run(&pool).await?;
-
-    jobs::poller::start(client.clone(), pool.clone(), downloads_cache.clone());
-    let app_state = state::AppState {
-        client,
-        pool,
-        downloads_cache,
-    };
     // our router
     let app = Router::new()
         .route("/series", get(anime::get_collection))

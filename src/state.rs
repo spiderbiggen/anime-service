@@ -1,13 +1,13 @@
-use std::env;
-
+use anyhow::Result;
 use axum::extract::FromRef;
+use chrono::Duration;
 use hyper::client::HttpConnector;
 use hyper_rustls::HttpsConnector;
+use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
 use url::Url;
 
-use crate::errors::InternalError;
 use crate::models::DownloadGroup;
 use crate::request_cache::RequestCache;
 
@@ -16,6 +16,16 @@ pub(crate) struct AppState {
     pub client: HyperClient,
     pub pool: DBPool,
     pub downloads_cache: RequestCache<Vec<DownloadGroup>>,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            client: create_hyper_client(),
+            pool: create_db_pool().unwrap(),
+            downloads_cache: RequestCache::new(Duration::minutes(5)),
+        }
+    }
 }
 
 pub type HyperClient = hyper::Client<HttpsConnector<HttpConnector>>;
@@ -49,23 +59,28 @@ pub(crate) fn create_hyper_client() -> hyper::Client<HttpsConnector<HttpConnecto
     hyper::Client::builder().build(https)
 }
 
-pub(crate) async fn create_db_pool() -> Result<DBPool, InternalError> {
-    let mut url = Url::parse("postgres://")?;
-    url.set_host(Some(&env::var("PG_HOST")?))?;
-    url.set_password(env::var("PG_PASS").ok().as_deref())
-        .expect("password should be accepted");
-    if let Ok(u) = env::var("PG_USER") {
-        url.set_username(&u).expect("password should be accepted");
-    }
-    if let Ok(port) = env::var("PG_PORT") {
-        url.set_port(Some(port.parse::<u16>()?))
-            .expect("port should be accepted");
-    }
-    url.set_path(&env::var("PG_DATABASE")?);
+#[derive(Debug, Deserialize)]
+struct DbConfig {
+    host: String,
+    port: u16,
+    user: String,
+    pass: String,
+    database: String,
+}
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(url.as_ref())
-        .await?;
+pub(crate) fn create_db_pool() -> Result<DBPool> {
+    let config: DbConfig = envy::prefixed("PG_").from_env()?;
+
+    let mut url = Url::parse("postgres://")?;
+    url.set_host(Some(&config.host))?;
+    url.set_password(Some(&config.pass))
+        .expect("password should be accepted");
+    url.set_username(&config.user)
+        .expect("username should be accepted");
+    url.set_port(Some(config.port))
+        .expect("port should be accepted");
+    url.set_path(&config.database);
+
+    let pool = PgPoolOptions::new().connect_lazy(url.as_ref())?;
     Ok(pool)
 }
