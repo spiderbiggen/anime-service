@@ -1,14 +1,10 @@
 use std::num::ParseIntError;
 
-use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use url::Url;
 
 use kitsu::models as kitsu;
-
-use crate::datasource;
-use crate::errors::InternalError;
 
 #[derive(Serialize, Copy, Clone, Debug)]
 pub struct ImageDimension {
@@ -175,21 +171,6 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
     }
 }
 
-impl TryFrom<datasource::models::EpisodeWithResolutions> for DownloadGroup {
-    type Error = InternalError;
-
-    fn try_from(a: datasource::models::EpisodeWithResolutions) -> Result<Self, Self::Error> {
-        Ok(Self {
-            episode: a.episode.try_into()?,
-            downloads: a
-                .resolutions
-                .into_iter()
-                .map(|it| it.try_into())
-                .collect::<Result<_, _>>()?,
-        })
-    }
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct Episode {
     pub title: String,
@@ -216,33 +197,6 @@ impl From<nyaa::Episode> for Episode {
     }
 }
 
-impl TryFrom<datasource::models::Episode> for Episode {
-    type Error = InternalError;
-
-    fn try_from(a: datasource::models::Episode) -> Result<Self, Self::Error> {
-        let ep = match a.episode {
-            Some(i) => Some(i.try_into()?),
-            None => None,
-        };
-        let dec = match a.decimal {
-            Some(i) => Some(i.try_into()?),
-            None => None,
-        };
-        let ver = match a.version {
-            Some(i) => Some(i.try_into()?),
-            None => None,
-        };
-        Ok(Self {
-            title: a.title,
-            episode: ep,
-            decimal: dec,
-            version: ver,
-            created_at: a.created_at,
-            updated_at: a.updated_at,
-        })
-    }
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct Download {
     pub comments: String,
@@ -261,22 +215,6 @@ impl From<nyaa::Download> for Download {
             file_name: a.file_name,
             published_date: a.pub_date,
         }
-    }
-}
-
-impl TryFrom<datasource::models::Download> for Download {
-    type Error = InternalError;
-
-    fn try_from(a: datasource::models::Download) -> Result<Self, Self::Error> {
-        Ok(Self {
-            comments: a
-                .comments
-                .ok_or(anyhow!("required Download.comments was None"))?,
-            resolution: a.resolution,
-            torrent: a.torrent,
-            file_name: a.file_name,
-            published_date: a.created_at,
-        })
     }
 }
 
