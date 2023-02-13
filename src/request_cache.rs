@@ -100,7 +100,7 @@ impl<T> RequestCache<T> {
         let key = key.into();
         let mut map = self.map.write().unwrap();
         if let Some(v) = map.get(&key) {
-            if v.inserted > last_update {
+            if v.inserted < last_update {
                 map.remove(&key);
             }
         }
