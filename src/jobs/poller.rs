@@ -1,32 +1,38 @@
-use crate::{models, HyperClient};
-use anyhow::{bail, Result};
-use sqlx::types::Uuid;
-use sqlx::{Pool, Postgres};
 use std::time::Duration;
+
+use anyhow::Result;
 use tokio::task::JoinHandle;
 use tracing::log::{error, warn};
 
+use datasource::repository;
+
+use crate::datasource;
+use crate::models::DownloadGroup;
+use crate::request_cache::RequestCache;
+use crate::state::{AppState, DBPool, HyperClient};
+
 const DEFAULT_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
-pub(crate) fn start(client: HyperClient, pool: Pool<Postgres>) -> JoinHandle<()> {
+pub(crate) fn start(state: AppState) -> JoinHandle<()> {
     tokio::task::spawn(async move {
-        let poller = Poller::new(client, pool);
-        poller.run().await;
+        Poller::new(state).run().await;
     })
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Poller {
     client: HyperClient,
-    database: Pool<Postgres>,
+    database: DBPool,
+    cache: RequestCache<Vec<DownloadGroup>>,
     interval: Duration,
 }
 
 impl Poller {
-    pub fn new(client: HyperClient, database: Pool<Postgres>) -> Self {
+    pub fn new(state: AppState) -> Self {
         Self {
-            client,
-            database,
+            client: state.client,
+            database: state.pool,
+            cache: state.downloads_cache,
             interval: DEFAULT_INTERVAL,
         }
     }
@@ -49,79 +55,37 @@ impl Poller {
         Ok(())
     }
 
-    async fn get_groups(&self) -> Result<Vec<models::DownloadGroup>> {
-        let result = nyaa::groups(self.client.clone(), "")
+    async fn get_groups(&self) -> Result<Vec<DownloadGroup>> {
+        let result: Vec<DownloadGroup> = nyaa::groups(self.client.clone(), "")
             .await?
             .into_iter()
             .map(|e| e.into())
             .collect();
+        if let Some(last_update) = result.iter().map(|a| a.episode.updated_at).max() {
+            self.cache.invalidate_if_newer("", last_update)
+        }
         Ok(result)
     }
 
-    async fn save_downloads(&self, group: models::DownloadGroup) -> Result<()> {
-        struct Record {
-            id: Uuid,
-            resolutions: Option<Vec<String>>,
-        }
+    async fn save_downloads(&self, group: DownloadGroup) -> Result<()> {
+        let record = repository::episode::upsert(self.database.clone(), &group.episode).await?;
 
-        let mut record = sqlx::query_file_as!(
-            Record,
-            "queries/query_episode_download_by_unique.sql",
-            Option::<String>::None,
-            group.episode.title,
-            group.episode.episode.map(|e| e as i32),
-            group.episode.decimal.map(|e| e as i32),
-            group.episode.version.map(|e| e as i32)
-        )
-        .fetch_optional(&self.database)
-        .await?;
-
-        if record.is_none() {
-            let id = sqlx::query_file!(
-                "queries/insert_episode_download.sql",
-                group.episode.title,
-                group.episode.episode.map(|e| e as i32),
-                group.episode.decimal.map(|e| e as i32),
-                group.episode.version.map(|e| e as i32),
-                group.episode.created_at,
-                group.episode.updated_at,
-            )
-            .fetch_one(&self.database)
-            .await?
-            .id;
-            record = Some(Record {
-                id,
-                resolutions: None,
-            });
-        }
-
-        match record {
-            None => bail!("couldn't find or store download group in database for {group:?}"),
-            Some(r) => {
-                for download in group.downloads.iter() {
-                    if let Some(v) = r.resolutions.as_ref() {
-                        if v.contains(&download.resolution) {
-                            continue;
-                        }
-                    }
-                    let insert = sqlx::query_file!(
-                        "queries/insert_episode_download_resolution.sql",
-                        r.id,
-                        download.resolution,
-                        download.torrent,
-                        Some(&download.file_name),
-                        download.comments,
-                        Option::<String>::None,
-                        download.published_date,
-                    )
-                    .execute(&self.database)
-                    .await;
-                    if let Err(err) = insert {
-                        warn!("Failed to save download[{download:?}]: {err}")
-                    }
+        for download in group.downloads.iter() {
+            if let Some(v) = record.resolutions.as_ref() {
+                if v.contains(&download.resolution) {
+                    continue;
                 }
             }
+            let insert =
+                repository::download::insert(self.database.clone(), &record.id, download).await;
+
+            if let Err(err) = insert {
+                warn!("Failed to save download[{download:?}]: {err}")
+            }
         }
+
+        self.cache
+            .invalidate_if_newer(group.episode.title, group.episode.updated_at);
         Ok(())
     }
 }
