@@ -38,8 +38,7 @@ impl<T> RequestCache<T> {
         S: Into<String>,
     {
         let key: String = key.into();
-        let map = self.map.read().unwrap();
-        if let Some(v) = map.get(&key) {
+        if let Some(v) = self.map.read().unwrap().get(&key) {
             if v.expires >= Utc::now() {
                 return Some(v.value.clone());
             }
@@ -99,10 +98,10 @@ impl<T> RequestCache<T> {
         S: Into<String>,
     {
         let key = key.into();
-        let map = self.map.read().unwrap();
+        let mut map = self.map.write().unwrap();
         if let Some(v) = map.get(&key) {
             if v.inserted > last_update {
-                self.map.write().unwrap().remove(&key);
+                map.remove(&key);
             }
         }
     }

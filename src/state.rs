@@ -81,6 +81,5 @@ pub(crate) fn create_db_pool() -> Result<DBPool> {
         .expect("port should be accepted");
     url.set_path(&config.database);
 
-    let pool = PgPoolOptions::new().connect_lazy(url.as_ref())?;
-    Ok(pool)
+    Ok(PgPoolOptions::new().connect_lazy(url.as_ref())?)
 }
