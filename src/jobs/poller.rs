@@ -1,8 +1,10 @@
 use std::time::Duration;
 
 use anyhow::Result;
+use futures::{executor, future, FutureExt};
 use tokio::task::JoinHandle;
 use tracing::log::{error, warn};
+use tracing::{instrument, trace};
 
 use datasource::repository;
 
@@ -47,11 +49,18 @@ impl Poller {
         }
     }
 
+    #[instrument(skip(self))]
     async fn execute(&self) -> Result<()> {
+        trace!("fetching anime downloads");
         let groups = self.get_groups().await?;
+        let group_size = groups.len();
+        trace!("found {group_size} groups");
+        let mut futures = Vec::with_capacity(group_size);
         for group in groups {
-            self.save_downloads(group).await?
+            futures.push(self.save_downloads(group));
         }
+        future::try_join_all(futures).await?;
+        trace!("saved {group_size} groups");
         Ok(())
     }
 
