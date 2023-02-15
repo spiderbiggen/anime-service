@@ -1,10 +1,12 @@
 use std::time::Duration;
 
-use anyhow::Result;
-use futures::{executor, future, FutureExt};
+use anyhow::{anyhow, Result};
+use chrono::{Timelike, Utc};
+use futures::future;
 use tokio::task::JoinHandle;
+use tokio::time::{Instant, Interval};
 use tracing::log::{error, warn};
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use datasource::repository;
 
@@ -13,36 +15,47 @@ use crate::models::DownloadGroup;
 use crate::request_cache::RequestCache;
 use crate::state::{AppState, DBPool, HyperClient};
 
-const DEFAULT_INTERVAL: Duration = Duration::from_secs(5 * 60);
+const DEFAULT_INTERVAL: Duration = Duration::from_secs(60);
 
-pub(crate) fn start(state: AppState) -> JoinHandle<()> {
-    tokio::task::spawn(async move {
-        Poller::new(state).run().await;
-    })
+pub(crate) fn start(state: AppState) -> Result<JoinHandle<()>> {
+    let mut poller = Poller::new(state)?;
+    let handle = tokio::task::spawn(async move {
+        poller.run().await;
+    });
+    Ok(handle)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct Poller {
     client: HyperClient,
     database: DBPool,
     cache: RequestCache<Vec<DownloadGroup>>,
-    interval: Duration,
+    interval: Interval,
 }
 
 impl Poller {
-    pub fn new(state: AppState) -> Self {
-        Self {
+    pub fn new(state: AppState) -> Result<Self> {
+        let now = Utc::now();
+        let minute = now
+            .with_minute(now.minute() + 1)
+            .and_then(|t| t.with_second(0))
+            .and_then(|t| t.with_nanosecond(0))
+            .ok_or(anyhow!("failed to strip seconds"))?;
+        let duration = (minute - now).to_std()?;
+        let instant = Instant::now() + duration;
+        let interval = tokio::time::interval_at(instant, DEFAULT_INTERVAL);
+
+        Ok(Self {
             client: state.client,
             database: state.pool,
             cache: state.downloads_cache,
-            interval: DEFAULT_INTERVAL,
-        }
+            interval,
+        })
     }
 
-    pub async fn run(&self) {
-        let mut interval = tokio::time::interval(self.interval);
+    pub async fn run(&mut self) {
         loop {
-            interval.tick().await;
+            self.interval.tick().await;
             if let Err(err) = self.execute().await {
                 error!("failed to refresh anime downloads: {err}")
             }
@@ -54,7 +67,6 @@ impl Poller {
         trace!("fetching anime downloads");
         let groups = self.get_groups().await?;
         let group_size = groups.len();
-        trace!("found {group_size} groups");
         let mut futures = Vec::with_capacity(group_size);
         for group in groups {
             futures.push(self.save_downloads(group));

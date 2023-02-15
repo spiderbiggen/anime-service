@@ -30,7 +30,7 @@ async fn main() -> Result<(), InternalError> {
 
     let app_state = AppState::default();
     sqlx::migrate!().run(&app_state.pool).await?;
-    jobs::poller::start(app_state.clone());
+    jobs::poller::start(app_state.clone())?;
 
     // our router
     let app = Router::new()
