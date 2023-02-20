@@ -4,9 +4,9 @@ use anyhow::{anyhow, Result};
 use chrono::{Timelike, Utc};
 use futures::future;
 use tokio::task::JoinHandle;
-use tokio::time::{Instant, Interval};
+use tokio::time::{interval_at, Instant, Interval, MissedTickBehavior};
 use tracing::log::{error, warn};
-use tracing::{debug, instrument, trace};
+use tracing::{instrument, trace};
 
 use datasource::repository;
 
@@ -43,7 +43,8 @@ impl Poller {
             .ok_or(anyhow!("failed to strip seconds"))?;
         let duration = (minute - now).to_std()?;
         let instant = Instant::now() + duration;
-        let interval = tokio::time::interval_at(instant, DEFAULT_INTERVAL);
+        let mut interval = interval_at(instant, DEFAULT_INTERVAL);
+        interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
         Ok(Self {
             client: state.client,
@@ -77,7 +78,7 @@ impl Poller {
     }
 
     async fn get_groups(&self) -> Result<Vec<DownloadGroup>> {
-        let result: Vec<DownloadGroup> = nyaa::groups(self.client.clone(), "")
+        let result: Vec<DownloadGroup> = nyaa::groups(self.client.clone(), None)
             .await?
             .into_iter()
             .map(|e| e.into())
