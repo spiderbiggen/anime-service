@@ -1,6 +1,6 @@
 {
   "db": "PostgreSQL",
-  "1072220d195b394ac0ac3376b2b995817ee10a1071112c7fe194e16722178ab1": {
+  "7c28dac52a5e0b809cd8401c064c03885e1192824e04282a446a84f5dd3d170c": {
     "describe": {
       "columns": [
         {
@@ -18,32 +18,15 @@
           "Int4",
           "Int4",
           "Int4",
+          "Text",
           "Timestamptz",
           "Timestamptz"
         ]
       }
     },
-    "query": "INSERT INTO episode_download (title, episode, decimal, version, created_at, updated_at)\nVALUES ($1, $2, $3, $4, $5, $6)\nON CONFLICT DO NOTHING\nRETURNING id"
+    "query": "INSERT INTO episode_download (title, episode, decimal, version, extra, created_at, updated_at)\nVALUES ($1, $2, $3, $4, $5, $6, $7)\nON CONFLICT DO NOTHING\nRETURNING id"
   },
-  "cc3d550f2941462cab3aed632789689ef8f24027a4e586cf1276f6b787a55c4a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Varchar",
-          "Varchar",
-          "Text",
-          "Varchar",
-          "Text",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "INSERT INTO episode_download_resolution (episode_download_id, resolution, torrent, file_name, comments, magnet, created_at)\nVALUES ($1, $2, $3, $4, $5, $6, $7)\nON CONFLICT DO NOTHING"
-  },
-  "f7ad5ce6083c2188b258d516ed00072e4a6510a8bb6b5683c54ca048f3426d6f": {
+  "c873d8f286d78b7c34c53d38780859e2b50565d9ae8f83d8586254d40e121e47": {
     "describe": {
       "columns": [
         {
@@ -67,10 +50,29 @@
           "Text",
           "Int4",
           "Int4",
-          "Int4"
+          "Int4",
+          "Text"
         ]
       }
     },
-    "query": "SELECT ed.id, array_agg(edr.resolution) as resolutions\nFROM episode_download ed\n         JOIN episode_download_resolution edr on ed.id = edr.episode_download_id\nWHERE provider = COALESCE($1, 'SubsPlease')\n  AND ed.title = $2\n  AND COALESCE(ed.episode, -1) = COALESCE($3, -1)\n  AND COALESCE(ed.decimal, -1) = COALESCE($4, -1)\n  AND COALESCE(ed.version, -1) = COALESCE($5, -1)\nGROUP BY id"
+    "query": "SELECT ed.id, array_agg(edr.resolution) as resolutions\nFROM episode_download ed\n         JOIN episode_download_resolution edr on ed.id = edr.episode_download_id\nWHERE provider = COALESCE($1, 'SubsPlease')\n  AND ed.title = $2\n  AND COALESCE(ed.episode, -1) = COALESCE($3, -1)\n  AND COALESCE(ed.decimal, -1) = COALESCE($4, -1)\n  AND COALESCE(ed.version, -1) = COALESCE($5, -1)\n  AND COALESCE(ed.extra, '') = COALESCE($6, '')\nGROUP BY id"
+  },
+  "cc3d550f2941462cab3aed632789689ef8f24027a4e586cf1276f6b787a55c4a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Text",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO episode_download_resolution (episode_download_id, resolution, torrent, file_name, comments, magnet, created_at)\nVALUES ($1, $2, $3, $4, $5, $6, $7)\nON CONFLICT DO NOTHING"
   }
 }

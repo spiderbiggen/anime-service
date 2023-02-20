@@ -76,6 +76,7 @@ impl AnimeSource {
             decimal: parts.decimal,
             comments: item.guid.ok_or(Error::None("rss guid"))?.value,
             version: parts.version,
+            extra: parts.extra,
             resolution: parts.resolution,
             title: parts.title,
             file_name: parts.file_name,
@@ -112,6 +113,7 @@ pub struct Episode {
     pub episode: Option<u32>,
     pub decimal: Option<u32>,
     pub version: Option<u32>,
+    pub extra: Option<String>,
 }
 
 pub struct Download {
@@ -128,6 +130,7 @@ pub struct NyaaEntry {
     pub episode: Option<u32>,
     pub decimal: Option<u32>,
     pub version: Option<u32>,
+    pub extra: Option<String>,
     pub comments: String,
     pub resolution: String,
     pub torrent: String,
@@ -150,7 +153,7 @@ where
     let source = AnimeSource::new(
         "[SubsPlease]",
         Some("1_2"),
-        r"^\[.*?] (.*) - (\d+)(?:\.(\d+))?(?:[vV](\d+?))? \((\d+?p)\) \[.*?\].mkv",
+        r"^\[.*?] (.*) - (\d+)(?:\.(\d+))?(?:[vV](\d+?))?([a-zA-Z]*) \((\d+?p)\) \[.*?\].mkv",
     )?;
     get_anime_for(client.clone(), &source, title).await
 }
@@ -190,6 +193,7 @@ fn map_groups(entries: Vec<NyaaEntry>) -> Vec<AnimeDownloads> {
             episode: entry.episode,
             decimal: entry.decimal,
             version: entry.version,
+            extra: entry.extra,
         };
         let download = Download {
             comments: entry.comments,
@@ -223,6 +227,7 @@ struct TitleParts {
     episode: Option<u32>,
     decimal: Option<u32>,
     version: Option<u32>,
+    extra: Option<String>,
 }
 
 impl TitleParts {
@@ -233,8 +238,9 @@ impl TitleParts {
         let episode: Option<u32> = int_group(&cap, 2)?;
         let decimal: Option<u32> = int_group(&cap, 3)?;
         let version: Option<u32> = int_group(&cap, 4)?;
+        let extra: Option<String> = cap.get(5).map(|c| c.as_str().to_string());
         let resolution: String = cap
-            .get(5)
+            .get(6)
             .ok_or(Error::None("resolution"))?
             .as_str()
             .to_string();
@@ -246,6 +252,7 @@ impl TitleParts {
             episode,
             decimal,
             version,
+            extra,
         })
     }
 }
@@ -281,6 +288,7 @@ mod tests {
             episode: Some(1),
             decimal: None,
             version: None,
+            extra: None,
         };
         let source = get_source();
         let result = TitleParts::from_string(input.into(), &source.regex);
@@ -298,6 +306,7 @@ mod tests {
             episode: Some(1),
             decimal: None,
             version: Some(1),
+            extra: None,
         };
         let source = get_source();
         let result = TitleParts::from_string(input.into(), &source.regex);
@@ -315,6 +324,7 @@ mod tests {
             episode: Some(1),
             decimal: None,
             version: Some(1),
+            extra: None,
         };
         let source = get_source();
         let result = TitleParts::from_string(input.into(), &source.regex);
@@ -332,6 +342,7 @@ mod tests {
             episode: Some(1),
             decimal: Some(1),
             version: None,
+            extra: None,
         };
         let source = get_source();
         let result = TitleParts::from_string(input.into(), &source.regex);
@@ -349,6 +360,7 @@ mod tests {
             episode: Some(1),
             decimal: Some(1),
             version: Some(1),
+            extra: None,
         };
         let source = get_source();
         let result = TitleParts::from_string(input.into(), &source.regex);
@@ -366,6 +378,7 @@ mod tests {
             episode: Some(1),
             decimal: Some(1),
             version: Some(1),
+            extra: None,
         };
         let source = get_source();
         let result = TitleParts::from_string(input.into(), &source.regex);

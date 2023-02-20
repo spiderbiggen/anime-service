@@ -22,6 +22,7 @@ pub mod models {
         pub episode: Option<i32>,
         pub decimal: Option<i32>,
         pub version: Option<i32>,
+        pub extra: Option<String>,
         pub created_at: DateTime<Utc>,
         pub updated_at: DateTime<Utc>,
     }
@@ -47,6 +48,7 @@ pub mod models {
                 episode: ep,
                 decimal: dec,
                 version: ver,
+                extra: a.extra,
                 created_at: a.created_at,
                 updated_at: a.updated_at,
             })
@@ -114,7 +116,8 @@ async fn get_episode_by_unique_fields(
         episode.title,
         episode.episode.map(|e| e as i32),
         episode.decimal.map(|e| e as i32),
-        episode.version.map(|e| e as i32)
+        episode.version.map(|e| e as i32),
+        episode.extra,
     )
     .fetch_optional(pool)
     .await?;
@@ -131,6 +134,7 @@ async fn insert_episode(
         episode.episode.map(|e| e as i32),
         episode.decimal.map(|e| e as i32),
         episode.version.map(|e| e as i32),
+        episode.extra,
         episode.created_at,
         episode.updated_at,
     );

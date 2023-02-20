@@ -180,6 +180,8 @@ pub struct Episode {
     pub decimal: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -191,6 +193,7 @@ impl From<nyaa::Episode> for Episode {
             episode: a.episode,
             decimal: a.decimal,
             version: a.version,
+            extra: a.extra,
             created_at: Default::default(),
             updated_at: Default::default(),
         }
