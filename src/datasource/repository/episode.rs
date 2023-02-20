@@ -1,6 +1,4 @@
 use std::cmp::Reverse;
-use std::collections::hash_map::RandomState;
-use std::collections::HashMap;
 
 use anyhow::Result;
 use sqlx::types::Uuid;
@@ -127,7 +125,7 @@ async fn insert_episode(
     pool: &mut Transaction<'_, Postgres>,
     episode: &domain_models::Episode,
 ) -> Result<Uuid> {
-    let result = sqlx::query_file!(
+    let query = sqlx::query_file!(
         "queries/insert_episode_download.sql",
         episode.title,
         episode.episode.map(|e| e as i32),
@@ -135,11 +133,8 @@ async fn insert_episode(
         episode.version.map(|e| e as i32),
         episode.created_at,
         episode.updated_at,
-    )
-    .fetch_one(pool)
-    .await?
-    .id;
-    Ok(result)
+    );
+    Ok(query.fetch_one(pool).await?.id)
 }
 
 pub async fn get_collection(
@@ -159,21 +154,20 @@ pub async fn get_with_downloads(
     options: Option<EpisodeQueryOptions>,
 ) -> Result<Vec<domain_models::DownloadGroup>> {
     let rows = get_data_episodes(pool.clone(), options).await?;
-    let iter = rows.into_iter().map(|r| {
-        let id = r.id;
-        let group = models::WithResolutions {
-            episode: r,
-            resolutions: vec![],
-        };
-        (id, group)
-    });
-    let mut map: HashMap<Uuid, models::WithResolutions, RandomState> = HashMap::from_iter(iter);
 
-    download::get_data_downloads(pool.clone(), &mut map).await?;
-    let mut episodes = map
-        .into_values()
-        .map(|v| v.try_into())
-        .collect::<Result<Vec<domain_models::DownloadGroup>, _>>()?;
+    let episode_ids = rows.iter().map(|r| &r.id);
+    let mut downloads = download::get_for_episodes(pool.clone(), episode_ids).await?;
+
+    let result: Result<Vec<_>> = rows
+        .into_iter()
+        .map(|r| {
+            Ok(domain_models::DownloadGroup {
+                downloads: downloads.remove(&r.id).unwrap_or_default(),
+                episode: r.try_into()?,
+            })
+        })
+        .collect();
+    let mut episodes = result?;
     episodes.sort_by_key(|ep| Reverse(ep.episode.updated_at));
     Ok(episodes)
 }

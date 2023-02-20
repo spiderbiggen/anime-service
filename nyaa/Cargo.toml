@@ -8,8 +8,9 @@ edition = "2021"
 [dependencies]
 chrono = "0.4"
 futures = "0.3"
+tracing = "0.1"
 hyper = { version = "0.14", features = ["client"] }
-hyper-rustls = {version = "0.23" }
+hyper-rustls = { version = "0.23" }
 regex = "1"
 rss = "2"
 thiserror = "1"

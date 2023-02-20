@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use futures::StreamExt;
 use sqlx::types::Uuid;
 use sqlx::{Pool, Postgres, QueryBuilder};
-use tokio_stream::StreamExt;
 
-use crate::datasource::repository::episode::models::WithResolutions;
 use crate::models as domain_models;
 
 pub mod models {
@@ -64,14 +63,14 @@ pub async fn insert(
     Ok(())
 }
 
-pub(super) async fn get_data_downloads(
+pub(super) async fn get_for_episodes(
     pool: Pool<Postgres>,
-    map: &mut HashMap<Uuid, WithResolutions>,
-) -> Result<()> {
+    map: impl IntoIterator<Item = &Uuid>,
+) -> Result<HashMap<Uuid, Vec<domain_models::Download>>> {
     let mut qb = QueryBuilder::new("SELECT * FROM episode_download_resolution");
     qb.push(" WHERE episode_download_id in (");
     let mut separated = qb.separated(", ");
-    for &id in map.keys() {
+    for id in map {
         separated.push_bind(id);
     }
     separated.push_unseparated(")");
@@ -80,11 +79,17 @@ pub(super) async fn get_data_downloads(
     );
     let query = qb.build_query_as::<models::Download>();
     let mut stream = query.fetch(&pool);
+
+    let mut episodes =
+        HashMap::<Uuid, Vec<domain_models::Download>>::with_capacity(stream.size_hint().0);
     while let Some(row) = stream.next().await {
-        let row = row?;
-        if let Some(group) = map.get_mut(&row.episode_download_id) {
-            group.resolutions.push(row);
+        let download = row?;
+        match episodes.get_mut(&download.episode_download_id) {
+            Some(e) => e.push(download.try_into()?),
+            None => {
+                episodes.insert(download.episode_download_id, vec![download.try_into()?]);
+            }
         }
     }
-    Ok(())
+    Ok(episodes)
 }
