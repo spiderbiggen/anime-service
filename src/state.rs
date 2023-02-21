@@ -1,8 +1,6 @@
 use anyhow::Result;
 use axum::extract::FromRef;
 use chrono::Duration;
-use hyper::client::HttpConnector;
-use hyper_rustls::HttpsConnector;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
@@ -13,7 +11,7 @@ use crate::request_cache::RequestCache;
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
-    pub client: HyperClient,
+    pub client: ReqwestClient,
     pub pool: DBPool,
     pub downloads_cache: RequestCache<Vec<DownloadGroup>>,
 }
@@ -21,16 +19,16 @@ pub(crate) struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            client: create_hyper_client(),
+            client: create_reqwest_client(),
             pool: create_db_pool().unwrap(),
             downloads_cache: RequestCache::new(Duration::minutes(5)),
         }
     }
 }
 
-pub type HyperClient = hyper::Client<HttpsConnector<HttpConnector>>;
+pub type ReqwestClient = reqwest::Client;
 
-impl FromRef<AppState> for HyperClient {
+impl FromRef<AppState> for ReqwestClient {
     fn from_ref(input: &AppState) -> Self {
         input.client.clone()
     }
@@ -50,13 +48,8 @@ impl FromRef<AppState> for RequestCache<Vec<DownloadGroup>> {
     }
 }
 
-pub(crate) fn create_hyper_client() -> hyper::Client<HttpsConnector<HttpConnector>> {
-    let https = hyper_rustls::HttpsConnectorBuilder::new()
-        .with_native_roots()
-        .https_or_http()
-        .enable_http1()
-        .build();
-    hyper::Client::builder().build(https)
+pub(crate) fn create_reqwest_client() -> reqwest::Client {
+    reqwest::Client::new()
 }
 
 #[derive(Debug, Deserialize)]

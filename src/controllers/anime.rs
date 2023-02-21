@@ -5,11 +5,11 @@ use std::result::Result;
 
 use crate::errors::Error;
 use crate::models;
-use crate::state::HyperClient;
+use crate::state::ReqwestClient;
 
 pub async fn get_single(
     Path(id): Path<u32>,
-    State(hyper): State<HyperClient>,
+    State(hyper): State<ReqwestClient>,
 ) -> Result<Json<models::Show>, Error> {
     let anime = kitsu::anime::single(hyper, id).await?;
     let show = anime.data.try_into()?;
@@ -17,7 +17,7 @@ pub async fn get_single(
 }
 
 pub async fn get_collection(
-    State(hyper): State<HyperClient>,
+    State(hyper): State<ReqwestClient>,
 ) -> Result<Json<Vec<models::Show>>, Error> {
     let anime = kitsu::anime::collection(hyper).await?;
     let show: Result<Vec<models::Show>, ParseIntError> =

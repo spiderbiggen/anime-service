@@ -3,9 +3,8 @@ use std::num::ParseIntError;
 use std::{borrow::Borrow, collections::HashMap};
 
 use chrono::{DateTime, Utc};
-use hyper::client::connect::Connect;
-use hyper::http::StatusCode;
 use regex::{Captures, Regex};
+use reqwest::StatusCode;
 use rss::{Channel, Item};
 use tracing::{error, instrument};
 use url::Url;
@@ -13,11 +12,7 @@ use url::Url;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Http(#[from] hyper::http::Error),
-    #[error(transparent)]
-    Uri(#[from] hyper::http::uri::InvalidUri),
-    #[error(transparent)]
-    Request(#[from] hyper::Error),
+    Http(#[from] reqwest::Error),
     #[error(transparent)]
     ParseUrl(#[from] url::ParseError),
     #[error(transparent)]
@@ -138,18 +133,12 @@ pub struct NyaaEntry {
     pub pub_date: DateTime<Utc>,
 }
 
-pub async fn groups<C>(client: hyper::Client<C>, title: Option<&str>) -> Result<Vec<AnimeDownloads>>
-where
-    C: Connect + Clone + Send + Sync + 'static,
-{
+pub async fn groups(client: reqwest::Client, title: Option<&str>) -> Result<Vec<AnimeDownloads>> {
     let entries = downloads(client, title).await?;
     Ok(map_groups(entries))
 }
 
-pub async fn downloads<C>(client: hyper::Client<C>, title: Option<&str>) -> Result<Vec<NyaaEntry>>
-where
-    C: Connect + Clone + Send + Sync + 'static,
-{
+pub async fn downloads(client: reqwest::Client, title: Option<&str>) -> Result<Vec<NyaaEntry>> {
     let source = AnimeSource::new(
         "[SubsPlease]",
         Some("1_2"),
@@ -158,29 +147,23 @@ where
     get_anime_for(client.clone(), &source, title).await
 }
 
-async fn get_anime_for<C>(
-    client: hyper::Client<C>,
+async fn get_anime_for(
+    client: reqwest::Client,
     source: &AnimeSource,
     title: Option<&str>,
-) -> Result<Vec<NyaaEntry>>
-where
-    C: Connect + Clone + Send + Sync + 'static,
-{
+) -> Result<Vec<NyaaEntry>> {
     let url = source.build_url(title)?;
-    let val = get_feed(client, &url).await?;
+    let val = get_feed(client, url).await?;
     Ok(source.map_anime(val.items))
 }
 
-async fn get_feed<C>(client: hyper::Client<C>, url: &Url) -> Result<Channel>
-where
-    C: Connect + Clone + Send + Sync + 'static,
-{
-    let response = client.get(url.as_str().parse()?).await?;
+async fn get_feed(client: reqwest::Client, url: Url) -> Result<Channel> {
+    let response = client.get(url).send().await?;
     let status = response.status();
     if !status.is_success() {
         return Err(Error::Status(status));
     }
-    let body = hyper::body::to_bytes(response.into_body()).await?;
+    let body = response.bytes().await?;
     let channel = Channel::read_from(body.borrow())?;
     Ok(channel)
 }

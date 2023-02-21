@@ -7,13 +7,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1"
-consume_api = { path = "../consume-api", version = "0.1", features = ["hyper-tls"]}
-chrono = { version = "0.4", default-features = false, features = ["serde"] }
-derive_builder = "0.12"
-hyper = { version = "0.14", features = ["client"] }
-hyper-rustls = {version = "0.23" }
-http-serde = "1"
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.11", features = ["gzip", "json"] }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

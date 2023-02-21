@@ -5,6 +5,9 @@ ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
 ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
 
+WORKDIR /app/builder
+COPY . ./
+
 ARG TARGETPLATFORM
 RUN <<-EOF
     case "$TARGETPLATFORM" in
@@ -19,9 +22,6 @@ RUN <<-EOF
 EOF
 
 RUN rustup target add $(cat /rust_target.txt)
-
-WORKDIR /app/builder
-COPY . ./
 RUN cargo build --release --target $(cat /rust_target.txt)
 RUN cp ./target/$(cat /rust_target.txt)/release/anime-service /anime-service
 

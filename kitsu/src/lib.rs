@@ -1,16 +1,12 @@
 #[macro_use]
 extern crate serde;
 
-pub mod models;
-
-use hyper::client::connect::Connect;
-use hyper::http::{request, StatusCode};
-use hyper::{Body, Uri};
-use request::Request;
+use reqwest::StatusCode;
 use serde::{de, Deserialize};
-use std::borrow::Borrow;
 use thiserror::Error as ThisError;
 use url::Url;
+
+pub mod models;
 
 const JSON_API_TYPE: &str = "application/vnd.api+json";
 const ACCEPT_HEADER: &str = "Accept";
@@ -23,11 +19,9 @@ pub enum Error {
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
     #[error(transparent)]
-    Http(#[from] hyper::http::Error),
+    Http(#[from] reqwest::Error),
     #[error(transparent)]
-    Uri(#[from] hyper::http::uri::InvalidUri),
-    #[error(transparent)]
-    Request(#[from] hyper::Error),
+    InvalidUrl(#[from] url::ParseError),
     #[error("request failed with status code: {0}")]
     Status(StatusCode),
 }
@@ -58,64 +52,55 @@ pub struct Single<T> {
     pub data: T,
 }
 
-fn build_request(uri: Uri) -> request::Builder {
-    Request::builder()
+fn build_request(client: reqwest::Client, url: Url) -> reqwest::RequestBuilder {
+    client
+        .get(url)
         .header(ACCEPT_HEADER, JSON_API_TYPE)
         .header(CONTENT_TYPE_HEADER, JSON_API_TYPE)
-        .method("GET")
-        .uri(uri)
 }
 
-async fn get_document<T, C>(client: hyper::Client<C>, uri: Uri) -> Result<T>
+async fn get_document<T>(client: reqwest::Client, url: Url) -> Result<T>
 where
-    C: Connect + Clone + Send + Sync + 'static,
     for<'de> T: de::Deserialize<'de>,
 {
-    let request = build_request(uri);
-    let response = client.request(request.body(Body::empty())?).await?;
+    let request = build_request(client, url);
+    let response = request.send().await?;
     let status = response.status();
     if !status.is_success() {
         return Err(Error::Status(status));
     }
-    let body = hyper::body::to_bytes(response.into_body()).await?;
-    let document = serde_json::from_slice(body.borrow())?;
-    return Ok(document);
+    Ok(response.json().await?)
 }
 
-pub(self) async fn get_resource<T, C>(client: hyper::Client<C>, uri: Uri) -> Result<Single<T>>
+async fn get_resource<T>(client: reqwest::Client, url: Url) -> Result<Single<T>>
 where
-    C: Connect + Clone + Send + Sync + 'static,
     for<'de> T: de::Deserialize<'de>,
 {
-    Ok(get_document::<Single<T>, C>(client, uri).await?)
+    get_document::<Single<T>>(client, url).await
 }
 
-pub(self) async fn get_resources<T, C>(client: hyper::Client<C>, uri: Uri) -> Result<Collection<T>>
+async fn get_resources<T>(client: reqwest::Client, url: Url) -> Result<Collection<T>>
 where
-    C: Connect + Clone + Send + Sync + 'static,
     for<'de> T: de::Deserialize<'de>,
 {
-    Ok(get_document::<Collection<T>, C>(client, uri).await?)
+    get_document::<Collection<T>>(client, url).await
 }
 
 pub mod anime {
-    use crate::*;
+    use crate::{get_resource, get_resources, models};
+    use crate::{Collection, Result, Single};
+    use url::Url;
 
-    pub async fn single<C>(client: hyper::Client<C>, id: u32) -> Result<Single<models::Anime>>
-    where
-        C: Connect + Clone + Send + Sync + 'static,
-    {
-        let uri = format!("https://kitsu.io/api/edge/anime/{}", id).parse()?;
-        let anime = get_resource::<models::Anime, C>(client, uri).await?;
-        return Ok(anime);
+    pub async fn single(client: reqwest::Client, id: u32) -> Result<Single<models::Anime>> {
+        let url: Url = "https://kitsu.io/api/edge/anime/".parse()?;
+        let url = url.join(&id.to_string())?;
+        let anime = get_resource::<models::Anime>(client, url).await?;
+        Ok(anime)
     }
 
-    pub async fn collection<C>(client: hyper::Client<C>) -> Result<Collection<models::Anime>>
-    where
-        C: Connect + Clone + Send + Sync + 'static,
-    {
-        let uri = "https://kitsu.io/api/edge/anime/".parse()?;
-        let anime = get_resources::<models::Anime, C>(client, uri).await?;
-        return Ok(anime);
+    pub async fn collection(client: reqwest::Client) -> Result<Collection<models::Anime>> {
+        let uri: Url = "https://kitsu.io/api/edge/anime/".parse()?;
+        let anime = get_resources::<models::Anime>(client, uri).await?;
+        Ok(anime)
     }
 }

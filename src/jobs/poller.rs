@@ -13,7 +13,7 @@ use datasource::repository;
 use crate::datasource;
 use crate::models::DownloadGroup;
 use crate::request_cache::RequestCache;
-use crate::state::{AppState, DBPool, HyperClient};
+use crate::state::{AppState, DBPool, ReqwestClient};
 
 const DEFAULT_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -27,7 +27,7 @@ pub(crate) fn start(state: AppState) -> Result<JoinHandle<()>> {
 
 #[derive(Debug)]
 pub(crate) struct Poller {
-    client: HyperClient,
+    client: ReqwestClient,
     database: DBPool,
     cache: RequestCache<Vec<DownloadGroup>>,
     interval: Interval,
