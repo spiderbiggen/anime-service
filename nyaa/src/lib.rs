@@ -221,7 +221,10 @@ impl TitleParts {
         let episode: Option<u32> = int_group(&cap, 2)?;
         let decimal: Option<u32> = int_group(&cap, 3)?;
         let version: Option<u32> = int_group(&cap, 4)?;
-        let extra: Option<String> = cap.get(5).map(|c| c.as_str().to_string());
+        let extra: Option<String> = cap
+            .get(5)
+            .map(|c| c.as_str().to_string())
+            .filter(|s| !s.is_empty());
         let resolution: String = cap
             .get(6)
             .ok_or(Error::None("resolution"))?
@@ -256,7 +259,7 @@ mod tests {
         AnimeSource::new(
             "[SubsPlease]",
             Some("1_2"),
-            r"^\[.*?] (.*) - (\d+)(?:\.(\d+))?(?:[vV](\d+?))?(?:[a-zA-Z]*) \((\d+?p)\) \[.*?\].mkv",
+            r"^\[.*?] (.*) - (\d+)(?:\.(\d+))?(?:[vV](\d+?))?([a-zA-Z]*) \((\d+?p)\) \[.*?\].mkv",
         )
         .unwrap()
     }
@@ -274,9 +277,8 @@ mod tests {
             extra: None,
         };
         let source = get_source();
-        let result = TitleParts::from_string(input.into(), &source.regex);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), expected);
+        let result = TitleParts::from_string(input.into(), &source.regex).unwrap();
+        assert_eq!(result, expected);
     }
 
     #[test]
