@@ -9,6 +9,9 @@ use rss::{Channel, Item};
 use tracing::{error, instrument};
 use url::Url;
 
+const SUBS_PLEASE_REGEX: &str =
+    r"^\[.*?] (.*) - (\d+)(?:\.(\d+))?(?:[vV](\d+?))?([a-zA-Z]*) \((\d+?p)\) \[.*?\].mkv";
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
@@ -139,11 +142,7 @@ pub async fn groups(client: reqwest::Client, title: Option<&str>) -> Result<Vec<
 }
 
 pub async fn downloads(client: reqwest::Client, title: Option<&str>) -> Result<Vec<NyaaEntry>> {
-    let source = AnimeSource::new(
-        "[SubsPlease]",
-        Some("1_2"),
-        r"^\[.*?] (.*) - (\d+)(?:\.(\d+))?(?:[vV](\d+?))?([a-zA-Z]*) \((\d+?p)\) \[.*?\].mkv",
-    )?;
+    let source = AnimeSource::new("[SubsPlease]", Some("1_2"), SUBS_PLEASE_REGEX)?;
     get_anime_for(client.clone(), &source, title).await
 }
 
@@ -256,12 +255,7 @@ mod tests {
     use super::*;
 
     fn get_source() -> AnimeSource {
-        AnimeSource::new(
-            "[SubsPlease]",
-            Some("1_2"),
-            r"^\[.*?] (.*) - (\d+)(?:\.(\d+))?(?:[vV](\d+?))?([a-zA-Z]*) \((\d+?p)\) \[.*?\].mkv",
-        )
-        .unwrap()
+        AnimeSource::new("[SubsPlease]", Some("1_2"), SUBS_PLEASE_REGEX).unwrap()
     }
 
     #[test]
@@ -364,6 +358,23 @@ mod tests {
             decimal: Some(1),
             version: Some(1),
             extra: None,
+        };
+        let source = get_source();
+        let result = TitleParts::from_string(input.into(), &source.regex);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), expected);
+    }
+    #[test]
+    fn test_parse_anime_components_with_extras_in_episode_number() {
+        let input = "[_] Test-Anime - 1D (1080p) [_].mkv";
+        let expected = TitleParts {
+            file_name: input.into(),
+            title: "Test-Anime".into(),
+            resolution: "1080p".into(),
+            episode: Some(1),
+            decimal: None,
+            version: None,
+            extra: Some("D".into()),
         };
         let source = get_source();
         let result = TitleParts::from_string(input.into(), &source.regex);
