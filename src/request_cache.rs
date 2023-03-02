@@ -25,7 +25,20 @@ impl<T> Default for RequestCache<T> {
     }
 }
 
-impl<T> RequestCache<T> {
+pub trait InsertTime {
+    fn insert_time(&self) -> Option<DateTime<Utc>>;
+}
+
+impl<T: InsertTime> InsertTime for Vec<T> {
+    fn insert_time(&self) -> Option<DateTime<Utc>> {
+        self.iter().filter_map(|t| t.insert_time()).max()
+    }
+}
+
+impl<T> RequestCache<T>
+where
+    T: InsertTime,
+{
     pub fn new(timeout: Duration) -> RequestCache<T> {
         RequestCache {
             timeout,
@@ -50,13 +63,13 @@ impl<T> RequestCache<T> {
     where
         S: Into<String>,
     {
-        let now = Utc::now();
-        if expires <= now {
+        let inserted = value.insert_time().unwrap_or_else(|| Utc::now());
+        if expires <= inserted {
             return;
         }
         let value = Value {
             value: Arc::new(value),
-            inserted: now,
+            inserted,
             expires,
         };
         self.map.write().unwrap().insert(key.into(), value);

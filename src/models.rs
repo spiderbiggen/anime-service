@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use url::Url;
 
+use crate::request_cache::InsertTime;
 use kitsu::models as kitsu;
 
 #[derive(Serialize, Copy, Clone, Debug)]
@@ -147,6 +148,12 @@ pub struct DownloadGroup {
     #[serde(flatten)]
     pub episode: Episode,
     pub downloads: Vec<Download>,
+}
+
+impl InsertTime for DownloadGroup {
+    fn insert_time(&self) -> Option<DateTime<Utc>> {
+        Some(self.episode.updated_at)
+    }
 }
 
 impl From<nyaa::AnimeDownloads> for DownloadGroup {
