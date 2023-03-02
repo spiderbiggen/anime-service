@@ -63,7 +63,7 @@ where
     where
         S: Into<String>,
     {
-        let inserted = value.insert_time().unwrap_or_else(|| Utc::now());
+        let inserted = value.insert_time().unwrap_or_else(Utc::now);
         if expires <= inserted {
             return;
         }

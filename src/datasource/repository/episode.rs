@@ -94,6 +94,7 @@ pub async fn upsert(
 ) -> Result<models::UpsertResult> {
     let mut tx = pool.begin().await?;
     if let Some(record) = get_episode_by_unique_fields(&mut tx, episode).await? {
+        update_episode(&mut tx, &record.id, episode).await?;
         return Ok(record);
     }
 
@@ -139,6 +140,20 @@ async fn insert_episode(
         episode.updated_at,
     );
     Ok(query.fetch_one(pool).await?.id)
+}
+
+async fn update_episode(
+    pool: &mut Transaction<'_, Postgres>,
+    id: &Uuid,
+    episode: &domain_models::Episode,
+) -> Result<()> {
+    let query = sqlx::query_file!(
+        "queries/update_episode_download_updated_at.sql",
+        id,
+        episode.updated_at,
+    );
+    query.fetch_one(pool).await?;
+    Ok(())
 }
 
 pub async fn get_collection(

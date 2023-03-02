@@ -26,6 +26,19 @@
     },
     "query": "INSERT INTO episode_download (title, episode, decimal, version, extra, created_at, updated_at)\nVALUES ($1, $2, $3, $4, $5, $6, $7)\nON CONFLICT DO NOTHING\nRETURNING id"
   },
+  "9d3f044a70d964da2cece001c5e363d349086aa5d83c6319c58b350781743f86": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "UPDATE episode_download SET updated_at = $2\nWHERE id = $1"
+  },
   "c873d8f286d78b7c34c53d38780859e2b50565d9ae8f83d8586254d40e121e47": {
     "describe": {
       "columns": [
