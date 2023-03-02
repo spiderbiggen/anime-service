@@ -95,6 +95,7 @@ pub async fn upsert(
     let mut tx = pool.begin().await?;
     if let Some(record) = get_episode_by_unique_fields(&mut tx, episode).await? {
         update_episode(&mut tx, &record.id, episode).await?;
+        tx.commit().await?;
         return Ok(record);
     }
 
