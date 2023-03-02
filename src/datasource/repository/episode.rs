@@ -152,7 +152,7 @@ async fn update_episode(
         id,
         episode.updated_at,
     );
-    query.fetch_one(pool).await?;
+    query.execute(pool).await?;
     Ok(())
 }
 
