@@ -16,13 +16,13 @@ pub(crate) struct AppState {
     pub downloads_cache: RequestCache<Vec<DownloadGroup>>,
 }
 
-impl Default for AppState {
-    fn default() -> Self {
-        Self {
-            client: create_reqwest_client(),
-            pool: create_db_pool().unwrap(),
+impl AppState {
+    pub(crate) async fn new() -> Result<Self> {
+        Ok(Self {
+            client: reqwest::Client::new(),
+            pool: create_db_pool().await?,
             downloads_cache: RequestCache::new(Duration::minutes(5)),
-        }
+        })
     }
 }
 
@@ -48,10 +48,6 @@ impl FromRef<AppState> for RequestCache<Vec<DownloadGroup>> {
     }
 }
 
-pub(crate) fn create_reqwest_client() -> reqwest::Client {
-    reqwest::Client::new()
-}
-
 #[derive(Debug, Deserialize)]
 struct DbConfig {
     host: String,
@@ -61,7 +57,7 @@ struct DbConfig {
     database: String,
 }
 
-pub(crate) fn create_db_pool() -> Result<DBPool> {
+pub(crate) async fn create_db_pool() -> Result<DBPool> {
     let config: DbConfig = envy::prefixed("PG_").from_env()?;
 
     let mut url = Url::parse("postgres://")?;
@@ -74,5 +70,9 @@ pub(crate) fn create_db_pool() -> Result<DBPool> {
         .expect("port should be accepted");
     url.set_path(&config.database);
 
-    Ok(PgPoolOptions::new().connect_lazy(url.as_ref())?)
+    let pool = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(url.as_ref())
+        .await?;
+    Ok(pool)
 }

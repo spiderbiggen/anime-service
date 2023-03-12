@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+use anyhow::Result;
 use axum::{routing::get, Router};
 use tower::ServiceBuilder;
 use tower_http::{
@@ -10,7 +11,6 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use state::AppState;
 
 use crate::controllers::{anime, downloads};
-use crate::errors::InternalError;
 
 mod controllers;
 mod datasource;
@@ -21,14 +21,14 @@ mod request_cache;
 mod state;
 
 #[tokio::main]
-async fn main() -> Result<(), InternalError> {
+async fn main() -> Result<()> {
     // initialize tracing
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::from_default_env())
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let app_state = AppState::default();
+    let app_state = AppState::new().await?;
     sqlx::migrate!().run(&app_state.pool).await?;
     jobs::poller::start(app_state.clone())?;
 
@@ -49,7 +49,6 @@ async fn main() -> Result<(), InternalError> {
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
-        .await
-        .unwrap();
+        .await?;
     Ok(())
 }
