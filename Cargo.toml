@@ -13,6 +13,7 @@ kitsu = { path = "kitsu" }
 nyaa = { path = "nyaa" }
 
 anyhow = "1"
+async-stream = "0.3.5"
 axum = { version = "0.6" }
 chrono = { version = "0.4", features = ["serde"] }
 envy = "0.4.2"
@@ -29,5 +30,6 @@ tower-http = { version = "0.4", features = ["trace", "decompression-full", "comp
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio = { version = "1.21.2", features = ["full"] }
-tokio-stream = "0.1.11"
+tokio-stream = { version = "0.1.11", features = ["sync"] }
+tokio-util = "0.7.8"
 url = { version = "2", features = ["serde"] }

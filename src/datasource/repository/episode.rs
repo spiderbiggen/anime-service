@@ -1,8 +1,9 @@
 use std::cmp::Reverse;
 
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use sqlx::types::Uuid;
-use sqlx::{Pool, Postgres, QueryBuilder, Transaction};
+use sqlx::{query, Pool, Postgres, QueryBuilder, Transaction};
 
 use crate::datasource::repository::download;
 use crate::models as domain_models;
@@ -86,6 +87,13 @@ pub mod models {
 #[derive(Debug, Default)]
 pub struct EpisodeQueryOptions {
     pub title: Option<String>,
+}
+
+pub async fn last_update(pool: Pool<Postgres>) -> Result<Option<DateTime<Utc>>> {
+    let record = query!("SELECT updated_at FROM episode_download ORDER BY updated_at DESC LIMIT 1")
+        .fetch_optional(&pool)
+        .await?;
+    Ok(record.map(|it| it.updated_at))
 }
 
 pub async fn upsert(
@@ -197,13 +205,9 @@ async fn get_data_episodes(
     options: Option<EpisodeQueryOptions>,
 ) -> Result<Vec<models::Episode>> {
     let mut qb = QueryBuilder::new("SELECT * FROM episode_download");
-    let mut has_where = false;
     if let Some(options) = options {
         if let Some(title) = options.title {
-            qb.push(if has_where { " AND" } else { " WHERE" })
-                .push(" title ILIKE ")
-                .push_bind(title);
-            has_where = true;
+            qb.push(" WHERE title ILIKE ").push_bind(title);
         }
     }
     let query = qb

@@ -51,7 +51,12 @@ where
         S: Into<String>,
     {
         let key: String = key.into();
-        if let Some(v) = self.map.read().unwrap().get(&key) {
+        if let Some(v) = self
+            .map
+            .read()
+            .expect("RWLock should never be poisoned")
+            .get(&key)
+        {
             if v.expires >= Utc::now() {
                 return Some(v.value.clone());
             }
@@ -72,7 +77,10 @@ where
             inserted,
             expires,
         };
-        self.map.write().unwrap().insert(key.into(), value);
+        self.map
+            .write()
+            .expect("RWLock should never be poisoned")
+            .insert(key.into(), value);
     }
 
     pub fn insert_with_timeout<S>(&self, key: S, value: T, timeout: Duration)
@@ -93,7 +101,7 @@ where
     where
         S: Into<String>,
     {
-        let mut map = self.map.write().unwrap();
+        let mut map = self.map.write().expect("RWLock should never be poisoned");
         if let Some(v) = map.get_mut(&key.into()) {
             v.expires += extension;
         }
@@ -103,28 +111,42 @@ where
     where
         S: Into<String>,
     {
-        self.map.write().unwrap().remove(&key.into());
+        self.map
+            .write()
+            .expect("RWLock should never be poisoned")
+            .remove(&key.into());
     }
 
-    pub fn invalidate_if_newer<S>(&self, key: S, last_update: DateTime<Utc>)
+    pub fn invalidate_if_newer<S>(
+        &self,
+        key: S,
+        last_update: DateTime<Utc>,
+    ) -> Option<DateTime<Utc>>
     where
         S: Into<String>,
     {
         let key = key.into();
-        let mut map = self.map.write().unwrap();
+        self.invalidate_expired();
+        let mut map = self.map.write().expect("RWLock should never be poisoned");
         if let Some(v) = map.get(&key) {
             if v.inserted < last_update {
-                map.remove(&key);
+                if let Some((_, value)) = map.remove_entry(&key) {
+                    return Some(value.inserted);
+                }
             }
         }
+        None
     }
 
     pub fn invalidate_all(&self) {
-        self.map.write().unwrap().clear()
+        self.map
+            .write()
+            .expect("RWLock should never be poisoned")
+            .clear()
     }
 
     pub fn invalidate_expired(&self) {
-        let mut map = self.map.write().unwrap();
+        let mut map = self.map.write().expect("RWLock should never be poisoned");
         let now = Utc::now();
         map.retain(|_, v| v.expires > now);
     }

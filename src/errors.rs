@@ -1,8 +1,9 @@
+use std::num::ParseIntError;
+
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde_json::json;
-use std::num::ParseIntError;
 use tracing::error;
 
 #[derive(Debug, thiserror::Error)]
@@ -22,17 +23,13 @@ pub enum Error {
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         error!("request failed with {self}");
-        let (status, error_message) = match self {
-            Self::Nyaa(nyaa::Error::Status(code)) => {
-                (code, code.canonical_reason().unwrap_or_default())
-            }
-            Self::Kitsu(kitsu::Error::Status(code)) => {
-                (code, code.canonical_reason().unwrap_or_default())
-            }
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal server error"),
+        let status = match self {
+            Self::Nyaa(nyaa::Error::Status(code)) => code,
+            Self::Kitsu(kitsu::Error::Status(code)) => code,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
         let body = Json(json!({
-            "error": error_message,
+            "error": status.canonical_reason().unwrap_or_default(),
         }));
         (status, body).into_response()
     }
