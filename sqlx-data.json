@@ -1,5 +1,23 @@
 {
   "db": "PostgreSQL",
+  "3e1709f0695b18f0948c4d1fefd34c2dd24a31c4784e1add75f18c5ebc79ebc4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "updated_at",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT updated_at FROM episode_download ORDER BY updated_at DESC LIMIT 1"
+  },
   "7c28dac52a5e0b809cd8401c064c03885e1192824e04282a446a84f5dd3d170c": {
     "describe": {
       "columns": [

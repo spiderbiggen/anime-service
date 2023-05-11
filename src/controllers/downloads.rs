@@ -1,9 +1,15 @@
+use std::convert::Infallible;
 use std::result::Result;
 
+use async_stream::try_stream;
 use axum::extract::State;
+use axum::response::sse::{Event, KeepAlive};
+use axum::response::Sse;
 use axum::{extract::Query, Json};
 use chrono::Duration;
+use futures::Stream;
 use serde::Deserialize;
+use tracing::error;
 
 use repository::episode::EpisodeQueryOptions;
 
@@ -11,7 +17,7 @@ use crate::datasource::repository;
 use crate::errors::Error;
 use crate::models::DownloadGroup;
 use crate::request_cache::RequestCache;
-use crate::state::DBPool;
+use crate::state::{AppState, DBPool};
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct DownloadQuery {
@@ -38,4 +44,22 @@ pub(crate) async fn get(
         cache.insert_with_default_timeout(&key, downloads);
     }
     Ok(json)
+}
+
+pub(crate) async fn get_updates(
+    State(state): State<AppState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let mut rx = state.downloads_channel.subscribe();
+    let stream = try_stream! {
+        loop {
+            match rx.recv().await {
+                Ok(i) => match Event::default().event("download").json_data(i) {
+                    Ok(event) => yield  event,
+                    Err(e) => error!(error = ?e, "failed to serialize"),
+                },
+                Err(e) => error!(error = ?e, "sender closed"),
+            }
+        }
+    };
+    Sse::new(stream).keep_alive(KeepAlive::new())
 }

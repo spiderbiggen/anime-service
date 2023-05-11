@@ -117,7 +117,11 @@ where
             .remove(&key.into());
     }
 
-    pub fn invalidate_if_newer<S>(&self, key: S, last_update: DateTime<Utc>)
+    pub fn invalidate_if_newer<S>(
+        &self,
+        key: S,
+        last_update: DateTime<Utc>,
+    ) -> Option<DateTime<Utc>>
     where
         S: Into<String>,
     {
@@ -126,9 +130,12 @@ where
         let mut map = self.map.write().expect("RWLock should never be poisoned");
         if let Some(v) = map.get(&key) {
             if v.inserted < last_update {
-                map.remove(&key);
+                if let Some((_, value)) = map.remove_entry(&key) {
+                    return Some(value.inserted);
+                }
             }
         }
+        None
     }
 
     pub fn invalidate_all(&self) {

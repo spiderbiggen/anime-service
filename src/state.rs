@@ -4,6 +4,7 @@ use chrono::Duration;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
+use tokio::sync::broadcast;
 use url::Url;
 
 use crate::models::DownloadGroup;
@@ -14,14 +15,17 @@ pub(crate) struct AppState {
     pub client: ReqwestClient,
     pub pool: DBPool,
     pub downloads_cache: RequestCache<Vec<DownloadGroup>>,
+    pub downloads_channel: broadcast::Sender<DownloadGroup>,
 }
 
 impl AppState {
     pub(crate) async fn new() -> Result<Self> {
+        let (tx, _) = broadcast::channel(32);
         Ok(Self {
             client: reqwest::Client::new(),
             pool: create_db_pool().await?,
             downloads_cache: RequestCache::new(Duration::minutes(5)),
+            downloads_channel: tx,
         })
     }
 }
@@ -45,6 +49,12 @@ impl FromRef<AppState> for DBPool {
 impl FromRef<AppState> for RequestCache<Vec<DownloadGroup>> {
     fn from_ref(input: &AppState) -> Self {
         input.downloads_cache.clone()
+    }
+}
+
+impl FromRef<AppState> for broadcast::Sender<DownloadGroup> {
+    fn from_ref(input: &AppState) -> Self {
+        input.downloads_channel.clone()
     }
 }
 
