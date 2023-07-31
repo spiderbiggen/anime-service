@@ -1,39 +1,31 @@
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use anyhow::Result;
 use axum::{routing::get, Router};
+use proto::api::downloads_server::DownloadsServer;
+use tokio::sync::broadcast::Sender;
 use tower::ServiceBuilder;
 use tower_http::compression::predicate::NotForContentType;
 use tower_http::compression::{DefaultPredicate, Predicate};
 use tower_http::{
     compression::CompressionLayer, decompression::DecompressionLayer, trace::TraceLayer,
 };
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use state::AppState;
 
 use crate::controllers::{anime, downloads};
 
-mod controllers;
-mod datasource;
-mod errors;
-mod jobs;
-mod models;
-mod request_cache;
-mod state;
+pub mod controllers;
+pub mod datasource;
+pub mod errors;
+pub mod jobs;
+pub mod models;
+pub mod request_cache;
+pub mod state;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    // initialize tracing
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::from_default_env())
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+const ADDRESS: &SocketAddr = &SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 8000));
 
-    let app_state = AppState::new().await?;
-    sqlx::migrate!().run(&app_state.pool).await?;
-    jobs::poller::start(app_state.clone()).await?;
-
+pub async fn serve_axum(app_state: AppState) -> Result<()> {
     let compression_predicate =
         DefaultPredicate::new().and(NotForContentType::const_new("text/event-stream"));
     // our router
@@ -50,10 +42,19 @@ async fn main() -> Result<()> {
                 .layer(DecompressionLayer::new()),
         );
 
-    let addr = (Ipv4Addr::UNSPECIFIED, 8000).into();
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    tracing::debug!("listening on {}", ADDRESS);
+    axum::Server::bind(&ADDRESS)
         .serve(app.into_make_service())
+        .await?;
+    Ok(())
+}
+
+pub async fn serve_tonic(sender: Sender<models::DownloadGroup>) -> Result<()> {
+    let svc = DownloadsServer::new(controllers::downloads::DownloadService { sender });
+
+    tonic::transport::Server::builder()
+        .add_service(svc)
+        .serve(ADDRESS.clone())
         .await?;
     Ok(())
 }

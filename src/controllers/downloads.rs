@@ -9,7 +9,11 @@ use axum::{extract::Query, Json};
 use chrono::Duration;
 use futures::Stream;
 use serde::Deserialize;
-use tracing::error;
+use tokio::sync::broadcast::Sender;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+use tonic::Status;
+use tracing::{error, warn};
 
 use repository::episode::EpisodeQueryOptions;
 
@@ -62,4 +66,34 @@ pub(crate) async fn get_updates(
         }
     };
     Sse::new(stream).keep_alive(KeepAlive::new())
+}
+
+pub struct DownloadService {
+    pub sender: Sender<DownloadGroup>,
+}
+
+#[tonic::async_trait]
+impl proto::api::downloads_server::Downloads for DownloadService {
+    type SubscribeStream = ReceiverStream<Result<proto::api::DownloadCollection, Status>>;
+    async fn subscribe(
+        &self,
+        _request: tonic::Request<()>,
+    ) -> Result<tonic::Response<Self::SubscribeStream>, Status> {
+        let mut incoming = self.sender.subscribe();
+        let (tx, rx) = mpsc::channel(4);
+        tokio::spawn(async move {
+            loop {
+                match incoming.recv().await {
+                    Ok(i) => tx.send(Ok(i.into())).await.unwrap(),
+                    Err(e) => {
+                        warn!( error =? e, "failed to receive new episode");
+                        tx.send(Err(Status::unavailable(e.to_string()))).await.unwrap();
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(tonic::Response::new(ReceiverStream::new(rx)))
+    }
 }

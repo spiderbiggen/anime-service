@@ -11,7 +11,7 @@ use crate::models::DownloadGroup;
 use crate::request_cache::RequestCache;
 
 #[derive(Debug, Clone)]
-pub(crate) struct AppState {
+pub struct AppState {
     pub client: ReqwestClient,
     pub pool: DBPool,
     pub downloads_cache: RequestCache<Vec<DownloadGroup>>,
@@ -19,11 +19,11 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
-    pub(crate) async fn new() -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let (tx, _) = broadcast::channel(32);
         Ok(Self {
             client: reqwest::Client::new(),
-            pool: create_db_pool().await?,
+            pool: create_db_pool()?,
             downloads_cache: RequestCache::new(Duration::minutes(5)),
             downloads_channel: tx,
         })
@@ -67,7 +67,7 @@ struct DbConfig {
     database: String,
 }
 
-pub(crate) async fn create_db_pool() -> Result<DBPool> {
+pub fn create_db_pool() -> Result<DBPool> {
     let config: DbConfig = envy::prefixed("PG_").from_env()?;
 
     let mut url = Url::parse("postgres://")?;
@@ -82,7 +82,6 @@ pub(crate) async fn create_db_pool() -> Result<DBPool> {
 
     let pool = PgPoolOptions::new()
         .max_connections(2)
-        .connect(url.as_ref())
-        .await?;
+        .connect_lazy(url.as_ref())?;
     Ok(pool)
 }

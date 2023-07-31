@@ -7,7 +7,7 @@ use crate::errors::Error;
 use crate::models;
 use crate::state::ReqwestClient;
 
-pub async fn get_single(
+pub(crate) async fn get_single(
     Path(id): Path<u32>,
     State(hyper): State<ReqwestClient>,
 ) -> Result<Json<models::Show>, Error> {
@@ -16,7 +16,7 @@ pub async fn get_single(
     Ok(Json(show))
 }
 
-pub async fn get_collection(
+pub(crate) async fn get_collection(
     State(hyper): State<ReqwestClient>,
 ) -> Result<Json<Vec<models::Show>>, Error> {
     let anime = kitsu::anime::collection(hyper).await?;
