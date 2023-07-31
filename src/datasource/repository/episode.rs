@@ -165,18 +165,6 @@ async fn update_episode(
     Ok(())
 }
 
-pub async fn get_collection(
-    pool: Pool<Postgres>,
-    options: Option<EpisodeQueryOptions>,
-) -> Result<Vec<domain_models::Episode>> {
-    let rows = get_data_episodes(pool, options).await?;
-    let episodes = rows
-        .into_iter()
-        .map(|v| v.try_into())
-        .collect::<Result<Vec<domain_models::Episode>, _>>()?;
-    Ok(episodes)
-}
-
 pub async fn get_with_downloads(
     pool: Pool<Postgres>,
     options: Option<EpisodeQueryOptions>,
