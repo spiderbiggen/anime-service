@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6};
 
 use anyhow::Result;
 use axum::{routing::get, Router};
@@ -23,7 +23,7 @@ pub mod models;
 pub mod request_cache;
 pub mod state;
 
-const ADDRESS: &SocketAddr = &SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 8000));
+const ADDRESS: &SocketAddr = &SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 8000);
 
 pub async fn serve_axum(app_state: AppState) -> Result<()> {
     let compression_predicate =
