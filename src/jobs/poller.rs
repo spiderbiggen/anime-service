@@ -73,15 +73,14 @@ async fn execute(poller: &mut impl Poller) -> Result<()> {
         poller.handle_group(group).await?;
     }
     poller.handle_last_updated(updated).await?;
-    trace!("saved {} groups", count);
+    trace!("processed {} groups", count);
     Ok(())
 }
 
 fn interval_at_next_minute() -> Result<Interval> {
     let now: DateTime<Utc> = Utc::now();
-    let minute = now
-        .with_minute(now.minute() + 1)
-        .and_then(|t| t.with_second(0))
+    let minute = (now + chrono::Duration::minutes(1))
+        .with_second(0)
         .and_then(|t| t.with_nanosecond(0))
         .ok_or(anyhow!("failed to strip seconds"))?;
     let duration = (minute - now).to_std()?;
