@@ -1,5 +1,6 @@
 use anime_service::{jobs::poller, state::AppState};
 use anyhow::Result;
+use chrono::{Utc, Duration};
 use tracing_subscriber::prelude::*;
 
 #[tokio::main]
@@ -12,7 +13,11 @@ async fn main() -> Result<()> {
 
     let app_state = AppState::new()?;
     sqlx::migrate!().run(&app_state.pool).await?;
-    poller::start_persistent(app_state.clone()).await?;
-    anime_service::serve_axum(app_state).await?;
+    let job = poller::PersistentPoller::new_with_last_update(
+        app_state.clone(),
+        Utc::now() - Duration::hours(7 * 24),
+    )?;
+    poller::start(job);
+    anime_service::serve_combined(app_state).await?;
     Ok(())
 }
