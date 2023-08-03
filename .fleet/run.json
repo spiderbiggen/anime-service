@@ -6,8 +6,12 @@
             "cargoArgs": ["run", "--package", "anime-service", "--bin", "anime-service"],
             "environment": {
                 "RUST_LOG":"info,anime_service=trace",
-                "DATABASE_URL": "postgres://postgres:postgres@localhost/anime-service"
-            },
-        },
+                "PG_HOST": "localhost",
+                "PG_PORT": 5432,
+                "PG_USER": "postgres",
+                "PG_PASS": "postgres",
+                "PG_DATABASE": "anime-service"
+            }
+        }
     ]
 }
