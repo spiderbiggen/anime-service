@@ -129,7 +129,7 @@ async fn get_episode_by_unique_fields(
         episode.version.map(|e| e as i32),
         episode.extra,
     )
-    .fetch_optional(pool)
+    .fetch_optional(&mut **pool)
     .await?;
     Ok(result)
 }
@@ -148,7 +148,7 @@ async fn insert_episode(
         episode.created_at,
         episode.updated_at,
     );
-    Ok(query.fetch_one(pool).await?.id)
+    Ok(query.fetch_one(&mut **pool).await?.id)
 }
 
 async fn update_episode(
@@ -161,7 +161,7 @@ async fn update_episode(
         id,
         episode.updated_at,
     );
-    query.execute(pool).await?;
+    query.execute(&mut **pool).await?;
     Ok(())
 }
 
