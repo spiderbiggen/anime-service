@@ -65,15 +65,15 @@ async fn execute(poller: &mut impl Poller) -> Result<()> {
         .into_iter()
         .skip_while(|g| g.episode.updated_at <= last_update);
 
-    let (count, _) = iter.size_hint();
-
+    let mut count = 0;
     let mut updated = last_update;
     for group in iter {
         updated = group.episode.updated_at;
         poller.handle_group(group).await?;
+        count += 1;
     }
     poller.handle_last_updated(updated).await?;
-    trace!("processed {} groups", count);
+    trace!("processed {count} groups");
     Ok(())
 }
 

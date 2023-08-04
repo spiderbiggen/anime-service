@@ -22,7 +22,7 @@ RUN <<-EOF
 EOF
 
 RUN rustup target add $(cat /rust_target.txt)
-RUN cargo build --release --target $(cat /rust_target.txt)
+RUN cargo build --release --bin anime-service --target $(cat /rust_target.txt)
 RUN cp ./target/$(cat /rust_target.txt)/release/anime-service /anime-service
 
 FROM gcr.io/distroless/cc as application
