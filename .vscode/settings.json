@@ -2,7 +2,7 @@
     "rust-analyzer.runnables.extraEnv": [
         {
             "env": {
-                "RUST_LOG":"info,anime_service=trace",
+                "RUST_LOG":"info,anime_service=trace,nyaa=trace,kitsu=trace",
                 "PG_HOST": "localhost",
                 "PG_PORT": 5432,
                 "PG_USER": "postgres",

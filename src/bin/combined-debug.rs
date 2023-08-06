@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
         app_state.clone(),
         Utc::now() - Duration::hours(7 * 24),
     )?;
-    poller::start(job);
+    poller::start(job)?;
     anime_service::serve_combined(app_state).await?;
     Ok(())
 }

@@ -20,7 +20,7 @@ const DEFAULT_INTERVAL: Duration = Duration::from_secs(60);
 
 pub async fn start_persistent(state: AppState) -> Result<JoinHandle<()>> {
     let poller = PersistentPoller::new(state).await?;
-    Ok(start(poller))
+    start(poller)
 }
 
 #[async_trait]
@@ -28,17 +28,28 @@ pub trait Poller: Sized + Send + Sync {
     fn reqwest_client(&self) -> reqwest::Client;
     fn last_update(&self) -> DateTime<Utc>;
 
-    async fn tick(&mut self) -> Instant;
-
     async fn handle_group(&self, group: DownloadGroup) -> Result<()>;
     async fn handle_last_updated(&mut self, updated: DateTime<Utc>) -> Result<()>;
 }
 
-pub fn start(poller: impl Poller + 'static) -> JoinHandle<()> {
+pub fn start(poller: impl Poller + 'static) -> Result<JoinHandle<()>> {
+    start_with_period(poller, DEFAULT_INTERVAL)
+}
+
+pub fn start_with_period(poller: impl Poller + 'static, period: Duration) -> Result<JoinHandle<()>> {
+    let interval = interval_at_next_minute(period)?;
+    Ok(start_with_interval(poller, interval))
+}
+
+pub fn start_with_interval(
+    poller: impl Poller + 'static,
+    mut interval: tokio::time::Interval,
+) -> JoinHandle<()> {
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
     tokio::task::spawn(async move {
         let mut poller = poller;
         loop {
-            poller.tick().await;
+            interval.tick().await;
             if let Err(err) = execute(&mut poller).await {
                 error!("failed to refresh anime downloads: {err}")
             }
@@ -77,7 +88,7 @@ async fn execute(poller: &mut impl Poller) -> Result<()> {
     Ok(())
 }
 
-fn interval_at_next_minute() -> Result<Interval> {
+fn interval_at_next_minute(period: Duration) -> Result<Interval> {
     let now: DateTime<Utc> = Utc::now();
     let minute = (now + chrono::Duration::minutes(1))
         .with_second(0)
@@ -85,16 +96,13 @@ fn interval_at_next_minute() -> Result<Interval> {
         .ok_or(anyhow!("failed to strip seconds"))?;
     let duration = (minute - now).to_std()?;
     let start = Instant::now() + duration;
-    let mut interval = interval_at(start, DEFAULT_INTERVAL);
-    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    Ok(interval)
+    Ok(interval_at(start, period))
 }
 
 #[derive(Debug)]
 pub struct TransientPoller {
     client: ReqwestClient,
     sender: Sender<DownloadGroup>,
-    interval: Interval,
     last_update: DateTime<Utc>,
 }
 
@@ -106,7 +114,6 @@ impl TransientPoller {
         Ok(Self {
             client: reqwest::Client::new(),
             sender,
-            interval: interval_at_next_minute()?,
             last_update,
         })
     }
@@ -120,10 +127,6 @@ impl Poller for TransientPoller {
 
     fn last_update(&self) -> DateTime<Utc> {
         self.last_update.clone()
-    }
-
-    async fn tick(&mut self) -> Instant {
-        self.interval.tick().await
     }
 
     async fn handle_group(&self, group: DownloadGroup) -> Result<()> {
@@ -143,7 +146,6 @@ pub struct PersistentPoller {
     database: DBPool,
     cache: RequestCache<Vec<DownloadGroup>>,
     download_channel: Sender<DownloadGroup>,
-    interval: Interval,
     last_update: DateTime<Utc>,
 }
 
@@ -156,13 +158,11 @@ impl PersistentPoller {
     }
 
     pub fn new_with_last_update(state: AppState, last_update: DateTime<Utc>) -> Result<Self> {
-        let interval = interval_at_next_minute()?;
         Ok(Self {
             client: state.client,
             database: state.pool,
             cache: state.downloads_cache,
             download_channel: state.downloads_channel,
-            interval,
             last_update,
         })
     }
@@ -198,10 +198,6 @@ impl Poller for PersistentPoller {
 
     fn last_update(&self) -> DateTime<Utc> {
         self.last_update.clone()
-    }
-
-    async fn tick(&mut self) -> Instant {
-        self.interval.tick().await
     }
 
     async fn handle_group(&self, group: DownloadGroup) -> Result<()> {
