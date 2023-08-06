@@ -178,6 +178,15 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
     }
 }
 
+impl From<DownloadGroup> for proto::api::v1::DownloadCollection {
+    fn from(val: DownloadGroup) -> Self {
+        Self {
+            episode: Some(val.episode.into()),
+            downloads: val.downloads.into_iter().map(|d| d.into()).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Episode {
     pub title: String,
@@ -207,6 +216,20 @@ impl From<nyaa::Episode> for Episode {
     }
 }
 
+impl From<Episode> for proto::api::v1::Episode {
+    fn from(val: Episode) -> Self {
+        Self {
+            created_at: Some(prost_timestamp(val.created_at)),
+            updated_at: Some(prost_timestamp(val.updated_at)),
+            title: val.title,
+            number: val.episode,
+            decimal: val.decimal,
+            version: val.version,
+            extra: val.extra,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Download {
     pub comments: String,
@@ -224,6 +247,18 @@ impl From<nyaa::Download> for Download {
             torrent: a.torrent,
             file_name: a.file_name,
             published_date: a.pub_date,
+        }
+    }
+}
+
+impl From<Download> for proto::api::v1::Download {
+    fn from(val: Download) -> Self {
+        Self {
+            published_date: Some(prost_timestamp(val.published_date)),
+            resolution: val.resolution,
+            comments: val.comments,
+            torrent: val.torrent,
+            file_name: val.file_name,
         }
     }
 }
@@ -257,5 +292,12 @@ impl From<nyaa::NyaaEntry> for DirectDownload {
             file_name: a.file_name,
             published_date: a.pub_date,
         }
+    }
+}
+
+fn prost_timestamp(date_time: DateTime<Utc>) -> prost_types::Timestamp {
+    prost_types::Timestamp {
+        seconds: date_time.timestamp(),
+        nanos: date_time.timestamp_subsec_nanos() as i32,
     }
 }

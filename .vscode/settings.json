@@ -1,10 +1,7 @@
 {
-    "configurations": [
+    "rust-analyzer.runnables.extraEnv": [
         {
-            "type": "cargo",
-            "name": "Run",
-            "cargoArgs": ["run", "--package", "anime-service", "--bin", "anime-service"],
-            "environment": {
+            "env": {
                 "RUST_LOG":"info,anime_service=trace",
                 "PG_HOST": "localhost",
                 "PG_PORT": 5432,

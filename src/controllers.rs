@@ -1,2 +1,2 @@
-pub(crate) mod anime;
-pub(crate) mod downloads;
+pub(crate) mod grpc;
+pub(crate) mod rest;

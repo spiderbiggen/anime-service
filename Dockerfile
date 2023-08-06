@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM --platform=$BUILDPLATFORM rust:1.69.0 as builder
+FROM --platform=$BUILDPLATFORM rust:1.71.0 as builder
 
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
@@ -22,7 +22,7 @@ RUN <<-EOF
 EOF
 
 RUN rustup target add $(cat /rust_target.txt)
-RUN cargo build --release --target $(cat /rust_target.txt)
+RUN cargo build --release --bin anime-service --target $(cat /rust_target.txt)
 RUN cp ./target/$(cat /rust_target.txt)/release/anime-service /anime-service
 
 FROM gcr.io/distroless/cc as application

@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
+use axum::async_trait;
 use chrono::{DateTime, Timelike, Utc};
 use tokio::sync::broadcast::Sender;
 use tokio::task::JoinHandle;
@@ -17,91 +18,156 @@ use crate::state::{AppState, DBPool, ReqwestClient};
 
 const DEFAULT_INTERVAL: Duration = Duration::from_secs(60);
 
-pub(crate) async fn start(state: AppState) -> Result<JoinHandle<()>> {
-    let mut poller = Poller::new(state).await?;
-    let handle = tokio::task::spawn(async move {
-        poller.run().await;
-    });
-    Ok(handle)
+pub async fn start_persistent(state: AppState) -> Result<JoinHandle<()>> {
+    let poller = PersistentPoller::new(state).await?;
+    start(poller)
+}
+
+#[async_trait]
+pub trait Poller: Sized + Send + Sync {
+    fn reqwest_client(&self) -> reqwest::Client;
+    fn last_update(&self) -> DateTime<Utc>;
+
+    async fn handle_group(&self, group: DownloadGroup) -> Result<()>;
+    async fn handle_last_updated(&mut self, updated: DateTime<Utc>) -> Result<()>;
+}
+
+pub fn start(poller: impl Poller + 'static) -> Result<JoinHandle<()>> {
+    start_with_period(poller, DEFAULT_INTERVAL)
+}
+
+pub fn start_with_period(
+    poller: impl Poller + 'static,
+    period: Duration,
+) -> Result<JoinHandle<()>> {
+    let interval = interval_at_next_minute(period)?;
+    Ok(start_with_interval(poller, interval))
+}
+
+pub fn start_with_interval(
+    poller: impl Poller + 'static,
+    mut interval: Interval,
+) -> JoinHandle<()> {
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    tokio::task::spawn(async move {
+        let mut poller = poller;
+        loop {
+            interval.tick().await;
+            if let Err(err) = execute(&mut poller).await {
+                error!("failed to refresh anime downloads: {err}")
+            }
+        }
+    })
+}
+
+async fn get_groups(client: reqwest::Client) -> Result<Vec<DownloadGroup>> {
+    let result: Vec<DownloadGroup> = nyaa::groups(client, None)
+        .await?
+        .into_iter()
+        .map(|e| e.into())
+        .collect();
+    Ok(result)
+}
+
+#[instrument(skip(poller))]
+async fn execute(poller: &mut impl Poller) -> Result<()> {
+    trace!("fetching anime downloads");
+    let mut groups = get_groups(poller.reqwest_client()).await?;
+    groups.sort_by_key(|g| g.episode.updated_at);
+    let last_update = poller.last_update();
+    let iter = groups
+        .into_iter()
+        .skip_while(|g| g.episode.updated_at <= last_update);
+
+    let mut count = 0;
+    let mut updated = last_update;
+    for group in iter {
+        updated = group.episode.updated_at;
+        poller.handle_group(group).await?;
+        count += 1;
+    }
+    poller.handle_last_updated(updated).await?;
+    trace!("processed {count} groups");
+    Ok(())
+}
+
+fn interval_at_next_minute(period: Duration) -> Result<Interval> {
+    let now: DateTime<Utc> = Utc::now();
+    let minute = (now + chrono::Duration::minutes(1))
+        .with_second(0)
+        .and_then(|t| t.with_nanosecond(0))
+        .ok_or(anyhow!("failed to strip seconds"))?;
+    let duration = (minute - now).to_std()?;
+    let start = Instant::now() + duration;
+    Ok(interval_at(start, period))
 }
 
 #[derive(Debug)]
-pub(crate) struct Poller {
+pub struct TransientPoller {
+    client: ReqwestClient,
+    sender: Sender<DownloadGroup>,
+    last_update: DateTime<Utc>,
+}
+
+impl TransientPoller {
+    pub fn new_with_last_update(
+        sender: Sender<DownloadGroup>,
+        last_update: DateTime<Utc>,
+    ) -> Result<Self> {
+        Ok(Self {
+            client: reqwest::Client::new(),
+            sender,
+            last_update,
+        })
+    }
+}
+
+#[async_trait]
+impl Poller for TransientPoller {
+    fn reqwest_client(&self) -> reqwest::Client {
+        self.client.clone()
+    }
+
+    fn last_update(&self) -> DateTime<Utc> {
+        self.last_update.clone()
+    }
+
+    async fn handle_group(&self, group: DownloadGroup) -> Result<()> {
+        let _ = self.sender.send(group);
+        Ok(())
+    }
+
+    async fn handle_last_updated(&mut self, updated: DateTime<Utc>) -> Result<()> {
+        self.last_update = updated;
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct PersistentPoller {
     client: ReqwestClient,
     database: DBPool,
     cache: RequestCache<Vec<DownloadGroup>>,
     download_channel: Sender<DownloadGroup>,
-    interval: Interval,
     last_update: DateTime<Utc>,
 }
 
-impl Poller {
+impl PersistentPoller {
     pub async fn new(state: AppState) -> Result<Self> {
         let last_update = repository::episode::last_update(state.pool.clone())
             .await?
             .unwrap_or_else(Utc::now);
-        let now = Utc::now();
-        let minute = now
-            .with_minute(now.minute() + 1)
-            .and_then(|t| t.with_second(0))
-            .and_then(|t| t.with_nanosecond(0))
-            .ok_or(anyhow!("failed to strip seconds"))?;
-        let duration = (minute - now).to_std()?;
-        let instant = Instant::now() + duration;
-        let mut interval = interval_at(instant, DEFAULT_INTERVAL);
-        interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+        Self::new_with_last_update(state, last_update)
+    }
 
+    pub fn new_with_last_update(state: AppState, last_update: DateTime<Utc>) -> Result<Self> {
         Ok(Self {
             client: state.client,
             database: state.pool,
             cache: state.downloads_cache,
             download_channel: state.downloads_channel,
-            interval,
             last_update,
         })
-    }
-
-    pub async fn run(&mut self) {
-        loop {
-            self.interval.tick().await;
-            if let Err(err) = self.execute().await {
-                error!("failed to refresh anime downloads: {err}")
-            }
-        }
-    }
-
-    #[instrument(skip(self))]
-    async fn execute(&mut self) -> Result<()> {
-        trace!("fetching anime downloads");
-        let mut groups = self.get_groups().await?;
-        groups.sort_by_key(|g| g.episode.updated_at);
-        let iter = groups
-            .into_iter()
-            .skip_while(|g| g.episode.updated_at <= self.last_update);
-
-        let (count, _) = iter.size_hint();
-
-        let mut updated = self.last_update;
-        for group in iter {
-            updated = group.episode.updated_at;
-            self.save_downloads(&group).await?;
-            self.send(group);
-        }
-        self.last_update = updated;
-        trace!("saved {} groups", count);
-        Ok(())
-    }
-
-    async fn get_groups(&self) -> Result<Vec<DownloadGroup>> {
-        let result: Vec<DownloadGroup> = nyaa::groups(self.client.clone(), None)
-            .await?
-            .into_iter()
-            .map(|e| e.into())
-            .collect();
-        if let Some(last_update) = result.iter().map(|a| a.episode.updated_at).max() {
-            self.cache.invalidate_if_newer("", last_update);
-        }
-        Ok(result)
     }
 
     async fn save_downloads(&self, group: &DownloadGroup) -> Result<()> {
@@ -125,8 +191,27 @@ impl Poller {
             .invalidate_if_newer(&group.episode.title, group.episode.updated_at);
         Ok(())
     }
+}
 
-    fn send(&self, group: DownloadGroup) {
+#[async_trait]
+impl Poller for PersistentPoller {
+    fn reqwest_client(&self) -> reqwest::Client {
+        self.client.clone()
+    }
+
+    fn last_update(&self) -> DateTime<Utc> {
+        self.last_update.clone()
+    }
+
+    async fn handle_group(&self, group: DownloadGroup) -> Result<()> {
+        self.save_downloads(&group).await?;
         let _ = self.download_channel.send(group);
+        Ok(())
+    }
+
+    async fn handle_last_updated(&mut self, updated: DateTime<Utc>) -> Result<()> {
+        self.cache.invalidate_if_newer("", updated.clone());
+        self.last_update = updated;
+        Ok(())
     }
 }
