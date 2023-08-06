@@ -21,7 +21,7 @@ RUN <<-EOF
     esac
 EOF
 
-RUN apt-get update && apt-get install protobuf-compiler
+RUN apt-get update && apt-get install -qq protobuf-compiler
 
 RUN rustup target add $(cat /rust_target.txt)
 RUN cargo build --release --bin anime-service --target $(cat /rust_target.txt)
