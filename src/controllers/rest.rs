@@ -1,34 +1,46 @@
 use std::convert::Infallible;
-use std::result::Result;
 
 use async_stream::try_stream;
-use axum::extract::State;
+use axum::extract::{Path, Query, State};
 use axum::response::sse::{Event, KeepAlive};
 use axum::response::Sse;
-use axum::{extract::Query, Json};
+use axum::Json;
 use chrono::Duration;
 use futures::Stream;
 use serde::Deserialize;
-use tokio::sync::broadcast::Sender;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
-use tonic::Status;
-use tracing::{error, warn};
-
-use repository::episode::EpisodeQueryOptions;
+use tracing::error;
 
 use crate::datasource::repository;
+use crate::datasource::repository::episode::EpisodeQueryOptions;
 use crate::errors::Error;
+use crate::models;
 use crate::models::DownloadGroup;
 use crate::request_cache::RequestCache;
-use crate::state::{AppState, DBPool};
+use crate::state::{AppState, DBPool, ReqwestClient};
+
+pub(crate) async fn anime_by_id(
+    Path(id): Path<u32>,
+    State(hyper): State<ReqwestClient>,
+) -> Result<Json<models::Show>, Error> {
+    let anime = kitsu::anime::single(hyper, id).await?;
+    let show = anime.data.try_into()?;
+    Ok(Json(show))
+}
+
+pub(crate) async fn find_anime(
+    State(hyper): State<ReqwestClient>,
+) -> Result<Json<Vec<models::Show>>, Error> {
+    let anime = kitsu::anime::collection(hyper).await?;
+    let show: Result<Vec<_>, _> = anime.data.into_iter().map(|d| d.try_into()).collect();
+    Ok(Json(show?))
+}
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct DownloadQuery {
     title: Option<String>,
 }
 
-pub(crate) async fn get(
+pub(crate) async fn find_downloads(
     Query(params): Query<DownloadQuery>,
     State(pool): State<DBPool>,
     State(cache): State<RequestCache<Vec<DownloadGroup>>>,
@@ -50,7 +62,7 @@ pub(crate) async fn get(
     Ok(json)
 }
 
-pub(crate) async fn get_updates(
+pub(crate) async fn get_downloads_events(
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut rx = state.downloads_channel.subscribe();
@@ -66,34 +78,4 @@ pub(crate) async fn get_updates(
         }
     };
     Sse::new(stream).keep_alive(KeepAlive::new())
-}
-
-pub struct DownloadService {
-    pub sender: Sender<DownloadGroup>,
-}
-
-#[tonic::async_trait]
-impl proto::api::downloads_server::Downloads for DownloadService {
-    type SubscribeStream = ReceiverStream<Result<proto::api::DownloadCollection, Status>>;
-    async fn subscribe(
-        &self,
-        _request: tonic::Request<()>,
-    ) -> Result<tonic::Response<Self::SubscribeStream>, Status> {
-        let mut incoming = self.sender.subscribe();
-        let (tx, rx) = mpsc::channel(4);
-        tokio::spawn(async move {
-            loop {
-                match incoming.recv().await {
-                    Ok(i) => tx.send(Ok(i.into())).await.unwrap(),
-                    Err(e) => {
-                        warn!( error =? e, "failed to receive new episode");
-                        tx.send(Err(Status::unavailable(e.to_string()))).await.unwrap();
-                        break;
-                    }
-                }
-            }
-        });
-
-        Ok(tonic::Response::new(ReceiverStream::new(rx)))
-    }
 }

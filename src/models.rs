@@ -178,7 +178,7 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
     }
 }
 
-impl From<DownloadGroup> for proto::api::DownloadCollection {
+impl From<DownloadGroup> for proto::api::v1::DownloadCollection {
     fn from(val: DownloadGroup) -> Self {
         Self {
             episode: Some(val.episode.into()),
@@ -216,7 +216,7 @@ impl From<nyaa::Episode> for Episode {
     }
 }
 
-impl From<Episode> for proto::api::Episode {
+impl From<Episode> for proto::api::v1::Episode {
     fn from(val: Episode) -> Self {
         Self {
             created_at: Some(prost_timestamp(val.created_at)),
@@ -251,7 +251,7 @@ impl From<nyaa::Download> for Download {
     }
 }
 
-impl From<Download> for proto::api::Download {
+impl From<Download> for proto::api::v1::Download {
     fn from(val: Download) -> Self {
         Self {
             published_date: Some(prost_timestamp(val.published_date)),

@@ -1,6 +1,6 @@
 use anime_service::{jobs::poller, state::AppState};
 use anyhow::Result;
-use chrono::{Utc, Duration};
+use chrono::{Duration, Utc};
 use tracing_subscriber::prelude::*;
 
 #[tokio::main]
@@ -17,7 +17,11 @@ async fn main() -> Result<()> {
         app_state.clone(),
         Utc::now() - Duration::hours(7 * 24),
     )?;
-    poller::start(job);
+    let interval = tokio::time::interval_at(
+        (std::time::Instant::now() + std::time::Duration::from_secs(2)).into(),
+        std::time::Duration::from_secs(60),
+    );
+    poller::start_with_interval(job, interval);
     anime_service::serve_combined(app_state).await?;
     Ok(())
 }
