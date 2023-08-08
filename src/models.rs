@@ -222,10 +222,10 @@ impl From<Episode> for proto::api::v1::Episode {
             created_at: Some(prost_timestamp(val.created_at)),
             updated_at: Some(prost_timestamp(val.updated_at)),
             title: val.title,
-            number: val.episode,
-            decimal: val.decimal,
-            version: val.version,
-            extra: val.extra,
+            number: val.episode.unwrap_or_default(),
+            decimal: val.decimal.unwrap_or_default(),
+            version: val.version.unwrap_or_default(),
+            extra: val.extra.unwrap_or_default(),
         }
     }
 }

@@ -93,8 +93,8 @@ impl AnimeSource {
             query.push_str(title.as_ref());
         }
         let mut params: Vec<(&str, &str)> = vec![("q", &query)];
-        if let Some(ref category) = self.category {
-            params.push(("c", category.as_str()));
+        if let Some(category) = &self.category {
+            params.push(("c", category));
         }
         Ok(Url::parse_with_params("https://nyaa.si/?page=rss", params)?)
     }
