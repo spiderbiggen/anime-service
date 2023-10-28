@@ -129,7 +129,7 @@ impl Poller for TransientPoller {
     }
 
     fn last_update(&self) -> DateTime<Utc> {
-        self.last_update.clone()
+        self.last_update
     }
 
     async fn handle_group(&self, group: DownloadGroup) -> Result<()> {
@@ -200,7 +200,7 @@ impl Poller for PersistentPoller {
     }
 
     fn last_update(&self) -> DateTime<Utc> {
-        self.last_update.clone()
+        self.last_update
     }
 
     async fn handle_group(&self, group: DownloadGroup) -> Result<()> {
@@ -210,7 +210,7 @@ impl Poller for PersistentPoller {
     }
 
     async fn handle_last_updated(&mut self, updated: DateTime<Utc>) -> Result<()> {
-        self.cache.invalidate_if_newer("", updated.clone());
+        self.cache.invalidate_if_newer("", updated);
         self.last_update = updated;
         Ok(())
     }

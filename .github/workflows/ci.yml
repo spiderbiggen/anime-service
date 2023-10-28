@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.1
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2.7.1
+        with:
+          cache-all-crates: true
+
+      - name: Check cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Build tests
+        uses: ClementTsang/cargo-action@v0.0.6
+        with:
+          command: test
+          use-cross: true
+          args: --no-run --locked
+        env:
+          RUST_BACKTRACE: full
+
+      - name: Run tests
+        uses: ClementTsang/cargo-action@v0.0.6
+        with:
+          command: test
+          use-cross: true
+          args: --no-fail-fast
+        env:
+          RUST_BACKTRACE: full
+
+      - name: Run clippy
+        uses: ClementTsang/cargo-action@v0.0.6
+        with:
+          command: clippy
+          use-cross: true
+          args: --all-targets --workspace -- -D warnings
+        env:
+          RUST_BACKTRACE: full
