@@ -1,10 +1,17 @@
 [package]
 name = "anime-service"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [workspace]
 members = ["kitsu", "nyaa", "proto"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "deny"
+pedantic = "warn"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -19,9 +26,8 @@ axum = { version = "0.6" }
 chrono = { version = "0.4", features = ["serde"] }
 envy = "0.4.2"
 futures = "0.3.26"
-http = "0.2"
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls"] }
-itertools = "0.11"
+itertools = "0.12"
 percent-encoding = "2.2.0"
 prost-types= "0.12.1"
 serde = { version = "1.0", features = ["derive"] }
@@ -37,3 +43,10 @@ tokio-stream = { version = "0.1.11", features = ["sync"] }
 tokio-util = "0.7.8"
 tonic = { version = "0.10.2", features = ["gzip"] }
 url = { version = "2", features = ["serde"] }
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
+
+[profile.release]
+lto = "fat"
+strip = "symbols"
