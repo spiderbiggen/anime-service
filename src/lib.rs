@@ -2,8 +2,8 @@ use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 
 use anyhow::Result;
 use axum::body::Body;
+use axum::http::Request;
 use axum::{routing::get, Router as AxumRouter};
-use http::Request;
 use reqwest::header::CONTENT_TYPE;
 use tokio::sync::broadcast::Sender;
 use tonic::transport::server::Router as TonicRouter;

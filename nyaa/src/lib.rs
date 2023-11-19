@@ -62,7 +62,6 @@ impl AnimeSource {
             .collect()
     }
 
-    #[instrument(err)]
     fn map_item(&self, item: Item) -> Result<NyaaEntry> {
         let pub_date = item.pub_date.ok_or(Error::None("rss pub date"))?;
         let date = DateTime::parse_from_rfc2822(&pub_date)?;
@@ -213,7 +212,7 @@ struct TitleParts {
 }
 
 impl TitleParts {
-    #[instrument(err)]
+    #[instrument(skip(regex), err)]
     fn from_string(file_name: String, regex: &Regex) -> Result<TitleParts> {
         let cap = regex.captures(&file_name).ok_or(Error::None("captures"))?;
         let title = cap.get(1).ok_or(Error::None("title"))?.as_str().to_string();
