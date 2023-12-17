@@ -1,10 +1,10 @@
 use std::num::ParseIntError;
+use std::ops::RangeInclusive;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use url::Url;
 
-use crate::request_cache::InsertTime;
 use kitsu::models as kitsu;
 
 #[derive(Serialize, Copy, Clone, Debug)]
@@ -145,84 +145,133 @@ impl TryFrom<kitsu::Anime> for Show {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DownloadGroup {
+    pub title: String,
     #[serde(flatten)]
-    pub episode: Episode,
+    pub variant: DownloadVariant,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
     pub downloads: Vec<Download>,
-}
-
-impl InsertTime for DownloadGroup {
-    fn insert_time(&self) -> Option<DateTime<Utc>> {
-        Some(self.episode.updated_at)
-    }
 }
 
 impl From<nyaa::AnimeDownloads> for DownloadGroup {
     fn from(a: nyaa::AnimeDownloads) -> Self {
-        let mut ep: Episode = a.episode.into();
-        ep.created_at = a
+        let created_at = a
             .downloads
             .iter()
             .map(|d| d.pub_date)
             .min()
             .unwrap_or_default();
-        ep.updated_at = a
+        let updated_at = a
             .downloads
             .iter()
             .map(|d| d.pub_date)
             .max()
             .unwrap_or_default();
         Self {
-            episode: ep,
+            title: a.title,
+            variant: a.variant.into(),
+            created_at,
+            updated_at,
             downloads: a.downloads.into_iter().map(|it| it.into()).collect(),
         }
     }
 }
 
-impl From<DownloadGroup> for proto::api::v1::DownloadCollection {
+impl From<DownloadGroup> for Option<proto::api::v1::DownloadCollection> {
     fn from(val: DownloadGroup) -> Self {
-        Self {
-            episode: Some(val.episode.into()),
+        let DownloadVariant::Episode(episode) = val.variant else {
+            return None;
+        };
+        Some(proto::api::v1::DownloadCollection {
+            episode: Some(proto::api::v1::Episode {
+                created_at: Some(prost_timestamp(val.created_at)),
+                updated_at: Some(prost_timestamp(val.updated_at)),
+                title: val.title,
+                number: episode.episode,
+                decimal: episode.decimal.unwrap_or_default(),
+                version: episode.version.unwrap_or_default(),
+                extra: episode.extra.unwrap_or_default(),
+            }),
             downloads: val.downloads.into_iter().map(|d| d.into()).collect(),
+        })
+    }
+}
+
+impl From<DownloadGroup> for Option<proto::api::v2::DownloadCollection> {
+    fn from(val: DownloadGroup) -> Self {
+        Some(proto::api::v2::DownloadCollection {
+            created_at: Some(prost_timestamp(val.created_at)),
+            updated_at: Some(prost_timestamp(val.updated_at)),
+            title: val.title,
+            variant: Some(val.variant.into()),
+            downloads: val.downloads.into_iter().map(|d| d.into()).collect(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum DownloadVariant {
+    Batch(RangeInclusive<u32>),
+    Episode(Episode),
+    Movie,
+}
+
+impl From<nyaa::DownloadVariant> for DownloadVariant {
+    fn from(value: nyaa::DownloadVariant) -> Self {
+        match value {
+            nyaa::DownloadVariant::Batch(range) => DownloadVariant::Batch(range),
+            nyaa::DownloadVariant::Episode(ep) => DownloadVariant::Episode(ep.into()),
+            nyaa::DownloadVariant::Movie => DownloadVariant::Movie,
+        }
+    }
+}
+
+impl From<DownloadVariant> for proto::api::v2::download_collection::Variant {
+    fn from(value: DownloadVariant) -> Self {
+        match value {
+            DownloadVariant::Batch(range) => {
+                proto::api::v2::download_collection::Variant::Batch(proto::api::v2::Batch {
+                    start: *range.start(),
+                    end: *range.end(),
+                })
+            }
+            DownloadVariant::Episode(ep) => {
+                proto::api::v2::download_collection::Variant::Episode(ep.into())
+            }
+            DownloadVariant::Movie => {
+                proto::api::v2::download_collection::Variant::Movie(proto::api::v2::Movie {})
+            }
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Episode {
-    pub title: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub episode: Option<u32>,
+    pub episode: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub decimal: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extra: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
 impl From<nyaa::Episode> for Episode {
     fn from(a: nyaa::Episode) -> Self {
         Self {
-            title: a.title,
             episode: a.episode,
             decimal: a.decimal,
             version: a.version,
             extra: a.extra,
-            created_at: Default::default(),
-            updated_at: Default::default(),
         }
     }
 }
 
-impl From<Episode> for proto::api::v1::Episode {
+impl From<Episode> for proto::api::v2::Episode {
     fn from(val: Episode) -> Self {
         Self {
-            created_at: Some(prost_timestamp(val.created_at)),
-            updated_at: Some(prost_timestamp(val.updated_at)),
-            title: val.title,
-            number: val.episode.unwrap_or_default(),
+            number: val.episode,
             decimal: val.decimal.unwrap_or_default(),
             version: val.version.unwrap_or_default(),
             extra: val.extra.unwrap_or_default(),
@@ -233,7 +282,7 @@ impl From<Episode> for proto::api::v1::Episode {
 #[derive(Debug, Clone, Serialize)]
 pub struct Download {
     pub comments: String,
-    pub resolution: String,
+    pub resolution: u16,
     pub torrent: String,
     pub file_name: String,
     pub published_date: DateTime<Utc>,
@@ -255,7 +304,7 @@ impl From<Download> for proto::api::v1::Download {
     fn from(val: Download) -> Self {
         Self {
             published_date: Some(prost_timestamp(val.published_date)),
-            resolution: val.resolution,
+            resolution: format!("{}p", val.resolution),
             comments: val.comments,
             torrent: val.torrent,
             file_name: val.file_name,
@@ -263,34 +312,14 @@ impl From<Download> for proto::api::v1::Download {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct DirectDownload {
-    pub title: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub episode: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub decimal: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<u32>,
-    pub comments: String,
-    pub resolution: String,
-    pub torrent: String,
-    pub file_name: String,
-    pub published_date: DateTime<Utc>,
-}
-
-impl From<nyaa::NyaaEntry> for DirectDownload {
-    fn from(a: nyaa::NyaaEntry) -> Self {
+impl From<Download> for proto::api::v2::Download {
+    fn from(val: Download) -> Self {
         Self {
-            title: a.title,
-            episode: a.episode,
-            decimal: a.decimal,
-            version: a.version,
-            comments: a.comments,
-            resolution: a.resolution,
-            torrent: a.torrent,
-            file_name: a.file_name,
-            published_date: a.pub_date,
+            published_date: Some(prost_timestamp(val.published_date)),
+            resolution: val.resolution as u32,
+            comments: val.comments,
+            torrent: val.torrent,
+            file_name: val.file_name,
         }
     }
 }

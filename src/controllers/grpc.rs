@@ -22,17 +22,19 @@ impl proto::api::v1::downloads_server::Downloads for DownloadService {
         tokio::spawn(async move {
             loop {
                 match incoming.recv().await {
-                    Ok(i) => {
-                        if tx.send(Ok(i.into())).await.is_err() {
-                            warn!(
-                                "failed to push downloads to client at {:?}",
-                                request.remote_addr()
-                            );
-                            break;
+                    Ok(group) => {
+                        if let Some(collection) = group.into() {
+                            if tx.send(Ok(collection)).await.is_err() {
+                                warn!(
+                                    "failed to push downloads to client at {:?}",
+                                    request.remote_addr()
+                                );
+                                break;
+                            }
                         }
                     }
                     Err(e) => {
-                        warn!(error = ?e, "failed to receive new episode from shared sender");
+                        warn!("failed to receive new episode from shared sender: {e}");
                         let message = Err(Status::unavailable(e.to_string()));
                         if tx.send(message).await.is_err() {
                             warn!(
@@ -43,7 +45,6 @@ impl proto::api::v1::downloads_server::Downloads for DownloadService {
                         break;
                     }
                 }
-                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             }
         });
 

@@ -3,85 +3,24 @@ use std::cmp::Reverse;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use sqlx::types::Uuid;
-use sqlx::{query, Pool, Postgres, QueryBuilder, Transaction};
+use sqlx::{Connection, Executor, FromRow, Postgres, QueryBuilder, Transaction};
 
-use crate::datasource::repository::download;
-use crate::models as domain_models;
+use crate::datasource::repository::{download, RawSingleResult, SingleResult, PROVIDER_DEFAULT};
+use crate::models::{DownloadGroup, DownloadVariant, Episode};
+use crate::state::DBPool;
 
-pub mod models {
-    use chrono::{DateTime, Utc};
-    use sqlx::types::Uuid;
-
-    pub(super) use crate::datasource::repository::download::models::Download;
-    use crate::errors::InternalError;
-    use crate::models as domain_models;
-
-    #[derive(Debug, sqlx::FromRow)]
-    pub struct Episode {
-        pub id: Uuid,
-        pub title: String,
-        pub episode: Option<i32>,
-        pub decimal: Option<i32>,
-        pub version: Option<i32>,
-        pub extra: Option<String>,
-        pub created_at: DateTime<Utc>,
-        pub updated_at: DateTime<Utc>,
-    }
-
-    impl TryFrom<Episode> for domain_models::Episode {
-        type Error = InternalError;
-
-        fn try_from(a: Episode) -> Result<Self, Self::Error> {
-            let ep = match a.episode {
-                Some(i) => Some(i.try_into()?),
-                None => None,
-            };
-            let dec = match a.decimal {
-                Some(i) => Some(i.try_into()?),
-                None => None,
-            };
-            let ver = match a.version {
-                Some(i) => Some(i.try_into()?),
-                None => None,
-            };
-            Ok(Self {
-                title: a.title,
-                episode: ep,
-                decimal: dec,
-                version: ver,
-                extra: a.extra,
-                created_at: a.created_at,
-                updated_at: a.updated_at,
-            })
-        }
-    }
-
-    #[derive(Debug, sqlx::FromRow)]
-    pub struct UpsertResult {
-        pub id: Uuid,
-        pub resolutions: Option<Vec<String>>,
-    }
-
-    #[derive(Debug, sqlx::FromRow)]
-    pub struct WithResolutions {
-        pub episode: Episode,
-        pub resolutions: Vec<Download>,
-    }
-
-    impl TryFrom<WithResolutions> for domain_models::DownloadGroup {
-        type Error = InternalError;
-
-        fn try_from(a: WithResolutions) -> Result<Self, Self::Error> {
-            Ok(Self {
-                episode: a.episode.try_into()?,
-                downloads: a
-                    .resolutions
-                    .into_iter()
-                    .map(|it| it.try_into())
-                    .collect::<Result<_, _>>()?,
-            })
-        }
-    }
+#[derive(Debug, FromRow)]
+struct EpisodeEntity {
+    id: Uuid,
+    #[sqlx(rename = "provider")]
+    _provider: String,
+    title: String,
+    episode: i32,
+    decimal: Option<i32>,
+    version: Option<i32>,
+    extra: Option<String>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Default)]
@@ -89,109 +28,132 @@ pub struct EpisodeQueryOptions {
     pub title: Option<String>,
 }
 
-pub async fn last_update(pool: Pool<Postgres>) -> Result<Option<DateTime<Utc>>> {
-    let record = query!("SELECT updated_at FROM episode_download ORDER BY updated_at DESC LIMIT 1")
-        .fetch_optional(&pool)
-        .await?;
-    Ok(record.map(|it| it.updated_at))
-}
-
-pub async fn upsert(
-    pool: Pool<Postgres>,
-    episode: &domain_models::Episode,
-) -> Result<models::UpsertResult> {
-    let mut tx = pool.begin().await?;
-    if let Some(record) = get_episode_by_unique_fields(&mut tx, episode).await? {
-        update_episode(&mut tx, &record.id, episode).await?;
-        tx.commit().await?;
-        return Ok(record);
+pub(super) async fn upsert<C>(
+    conn: &mut C,
+    title: &str,
+    episode: &Episode,
+    created_at: &DateTime<Utc>,
+    updated_at: &DateTime<Utc>,
+) -> Result<(Uuid, Vec<u16>)>
+where
+    C: Connection<Database = Postgres>,
+{
+    let mut transaction = conn.begin().await?;
+    if let Some(record) = get_by_unique_index(&mut *transaction, title, episode).await? {
+        if record.updated_at < *updated_at {
+            update_episode(&mut *transaction, &record.id, updated_at).await?;
+        }
+        transaction.commit().await?;
+        return Ok((record.id, record.resolutions));
     }
 
-    let result = models::UpsertResult {
-        id: insert_episode(&mut tx, episode).await?,
-        resolutions: None,
-    };
-    tx.commit().await?;
-    Ok(result)
+    let id = insert_episode(&mut transaction, title, episode, created_at, updated_at).await?;
+    transaction.commit().await?;
+    Ok((id, Vec::new()))
 }
 
-async fn get_episode_by_unique_fields(
-    pool: &mut Transaction<'_, Postgres>,
-    episode: &domain_models::Episode,
-) -> Result<Option<models::UpsertResult>> {
+async fn get_by_unique_index<'e, E>(
+    executor: E,
+    title: &str,
+    episode: &Episode,
+) -> Result<Option<SingleResult>>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     let result = sqlx::query_file_as!(
-        models::UpsertResult,
-        "queries/query_episode_download_by_unique.sql",
-        Option::<String>::None,
-        episode.title,
-        episode.episode.map(|e| e as i32),
+        RawSingleResult,
+        "queries/episode/query_episode_download_by_unique.sql",
+        PROVIDER_DEFAULT,
+        title,
+        episode.episode as i32,
         episode.decimal.map(|e| e as i32),
         episode.version.map(|e| e as i32),
         episode.extra,
     )
-    .fetch_optional(&mut **pool)
-    .await?;
+    .fetch_optional(executor)
+    .await?
+    .map(|record| record.into());
     Ok(result)
 }
 
 async fn insert_episode(
     pool: &mut Transaction<'_, Postgres>,
-    episode: &domain_models::Episode,
+    title: &str,
+    episode: &Episode,
+    created_at: &DateTime<Utc>,
+    updated_at: &DateTime<Utc>,
 ) -> Result<Uuid> {
     let query = sqlx::query_file!(
-        "queries/insert_episode_download.sql",
-        episode.title,
-        episode.episode.map(|e| e as i32),
+        "queries/episode/insert_episode_download.sql",
+        "SubsPlease",
+        title,
+        episode.episode as i32,
         episode.decimal.map(|e| e as i32),
         episode.version.map(|e| e as i32),
         episode.extra,
-        episode.created_at,
-        episode.updated_at,
+        created_at,
+        updated_at,
     );
     Ok(query.fetch_one(&mut **pool).await?.id)
 }
 
-async fn update_episode(
-    pool: &mut Transaction<'_, Postgres>,
-    id: &Uuid,
-    episode: &domain_models::Episode,
-) -> Result<()> {
-    let query = sqlx::query_file!(
-        "queries/update_episode_download_updated_at.sql",
+async fn update_episode<'e, E>(executor: E, id: &Uuid, updated_at: &DateTime<Utc>) -> Result<()>
+where
+    E: Executor<'e, Database = Postgres>,
+{
+    sqlx::query_file!(
+        "queries/episode/update_episode_download_updated_at.sql",
         id,
-        episode.updated_at,
-    );
-    query.execute(&mut **pool).await?;
+        updated_at,
+    )
+    .execute(executor)
+    .await?;
     Ok(())
 }
 
 pub async fn get_with_downloads(
-    pool: Pool<Postgres>,
+    conn: DBPool,
     options: Option<EpisodeQueryOptions>,
-) -> Result<Vec<domain_models::DownloadGroup>> {
-    let rows = get_data_episodes(pool.clone(), options).await?;
+) -> Result<Vec<DownloadGroup>> {
+    let mut transaction = conn.begin().await?;
+    let rows = get_data_episodes(&mut *transaction, options).await?;
+    if rows.is_empty() {
+        return Ok(Vec::new());
+    }
 
-    let episode_ids = rows.iter().map(|r| &r.id);
-    let mut downloads = download::get_for_episodes(pool.clone(), episode_ids).await?;
+    let episode_ids: Vec<_> = rows.iter().map(|r| r.id).collect();
+    let mut downloads = download::get_for_episodes(&mut *transaction, &episode_ids).await?;
+    transaction.commit().await?;
 
     let result: Result<Vec<_>> = rows
         .into_iter()
         .map(|r| {
-            Ok(domain_models::DownloadGroup {
+            Ok(DownloadGroup {
+                title: r.title,
+                variant: DownloadVariant::Episode(Episode {
+                    episode: r.episode as u32,
+                    decimal: r.decimal.map(|d| d as u32),
+                    version: r.version.map(|d| d as u32),
+                    extra: r.extra,
+                }),
+                created_at: r.created_at,
+                updated_at: r.updated_at,
                 downloads: downloads.remove(&r.id).unwrap_or_default(),
-                episode: r.try_into()?,
             })
         })
         .collect();
     let mut episodes = result?;
-    episodes.sort_by_key(|ep| Reverse(ep.episode.updated_at));
+    episodes.sort_by_key(|ep| Reverse(ep.updated_at));
     Ok(episodes)
 }
 
-async fn get_data_episodes(
-    pool: Pool<Postgres>,
+async fn get_data_episodes<'e, E>(
+    executor: E,
     options: Option<EpisodeQueryOptions>,
-) -> Result<Vec<models::Episode>> {
+) -> Result<Vec<EpisodeEntity>>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     let mut qb = QueryBuilder::new("SELECT * FROM episode_download");
     if let Some(options) = options {
         if let Some(title) = options.title {
@@ -199,9 +161,10 @@ async fn get_data_episodes(
         }
     }
     let query = qb
-        .push(" ORDER BY created_at DESC")
+        .push(" ORDER BY updated_at DESC")
         .push(" LIMIT 25")
-        .build_query_as::<models::Episode>();
-    let rows = query.fetch_all(&pool).await?;
+        .build_query_as::<EpisodeEntity>();
+
+    let rows = query.fetch_all(executor).await?;
     Ok(rows)
 }

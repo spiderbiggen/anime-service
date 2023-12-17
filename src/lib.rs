@@ -24,7 +24,6 @@ mod datasource;
 pub mod errors;
 pub mod jobs;
 pub mod models;
-mod request_cache;
 pub mod state;
 
 const ADDRESS: &SocketAddr = &SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 8000);
@@ -75,19 +74,52 @@ pub fn create_axum_router(app_state: AppState) -> AxumRouter {
         DefaultPredicate::new().and(NotForContentType::const_new("text/event-stream"));
 
     AxumRouter::new()
-        .route("/series", get(controllers::rest::find_anime))
-        .route("/series/:id", get(controllers::rest::anime_by_id))
-        .route("/downloads", get(controllers::rest::find_downloads))
-        .route(
-            "/downloads/updates",
-            get(controllers::rest::get_downloads_events),
-        )
+        .nest("/", unversioned_routes())
+        .nest("/v1", v1_routes())
         .with_state(app_state)
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
                 .layer(CompressionLayer::new().compress_when(compression_predicate))
                 .layer(DecompressionLayer::new()),
+        )
+}
+
+pub fn unversioned_routes() -> AxumRouter<AppState> {
+    AxumRouter::new()
+        .route("/series", get(controllers::rest::unversioned::find_anime))
+        .route(
+            "/series/:id",
+            get(controllers::rest::unversioned::anime_by_id),
+        )
+        // Deprecated
+        .route(
+            "/downloads",
+            get(controllers::rest::unversioned::find_downloads),
+        )
+        .route(
+            "/downloads/updates",
+            get(controllers::rest::unversioned::get_downloads_events),
+        )
+}
+
+pub fn v1_routes() -> AxumRouter<AppState> {
+    AxumRouter::new()
+        .route(
+            "/downloads/batches",
+            get(controllers::rest::batch::find_downloads),
+        )
+        .route(
+            "/downloads/episodes",
+            get(controllers::rest::episode::find_downloads),
+        )
+        .route(
+            "/downloads/episodes/updates",
+            get(controllers::rest::episode::get_downloads_events),
+        )
+        .route(
+            "/downloads/movies",
+            get(controllers::rest::movie::find_downloads),
         )
 }
 

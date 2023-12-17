@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ed.id, ed.updated_at, ARRAY_AGG(edr.resolution) AS resolutions\nFROM movie_download ed\n         JOIN movie_download_resolution edr ON ed.id = edr.movie_download_id\nWHERE provider = $1\n  AND ed.title = $2\nGROUP BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "resolutions",
+        "type_info": "Int2Array"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "6988c43e55a70f3c6bf7a73eb21224fd2fcef301d0d6e76c514b5940cfcfdc09"
+}

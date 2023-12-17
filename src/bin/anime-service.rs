@@ -12,8 +12,8 @@ async fn main() -> Result<()> {
 
     let app_state = AppState::new()?;
     sqlx::migrate!().run(&app_state.pool).await?;
-    let job = poller::PersistentPoller::new(app_state.clone()).await?;
-    poller::start(job)?;
+    let poller = poller::Poller::persistent_from_state(&app_state).await?;
+    poller.start()?;
 
     anime_service::serve_combined(app_state).await?;
     Ok(())
