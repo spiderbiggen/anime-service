@@ -1,2 +1,2 @@
-pub mod download;
-pub mod episode;
+mod download_resolutions;
+pub mod downloads;

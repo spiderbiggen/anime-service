@@ -1,6 +1,5 @@
 use anyhow::Result;
 use axum::extract::FromRef;
-use chrono::Duration;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
@@ -8,13 +7,11 @@ use tokio::sync::broadcast;
 use url::Url;
 
 use crate::models::DownloadGroup;
-use crate::request_cache::RequestCache;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub client: ReqwestClient,
     pub pool: DBPool,
-    pub downloads_cache: RequestCache<Vec<DownloadGroup>>,
     pub downloads_channel: broadcast::Sender<DownloadGroup>,
 }
 
@@ -24,7 +21,6 @@ impl AppState {
         Ok(Self {
             client: reqwest::Client::new(),
             pool: create_db_pool()?,
-            downloads_cache: RequestCache::new(Duration::minutes(5)),
             downloads_channel: tx,
         })
     }
@@ -43,12 +39,6 @@ pub type DBPool = Pool<Postgres>;
 impl FromRef<AppState> for DBPool {
     fn from_ref(input: &AppState) -> Self {
         input.pool.clone()
-    }
-}
-
-impl FromRef<AppState> for RequestCache<Vec<DownloadGroup>> {
-    fn from_ref(input: &AppState) -> Self {
-        input.downloads_cache.clone()
     }
 }
 

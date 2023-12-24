@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM download_resolution WHERE download_id = ANY($1) ORDER BY resolution DESC;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "download_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "torrent",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "file_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "comments",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "magnet",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "resolution",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0ef0a4c9986c58fff94ded25679a2cba14921b2befb7b546fd44ea820ac827b0"
+}

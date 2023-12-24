@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.id, d.updated_at, ARRAY_AGG(dr.resolution) AS resolutions\nFROM download d\n         JOIN download_resolution dr ON d.id = dr.download_id\nWHERE d.variant = 'batch'\n  AND d.provider = $1\n  AND d.title = $2\n  AND d.start_index = $3\n  AND d.end_index = $4\nGROUP BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "resolutions",
+        "type_info": "Int2Array"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "d29c1903ac9ec9b74297d2552e53525f6c274a6cd0dd28ef9d5fad7c10bc59e1"
+}

@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO download (variant, provider, title, created_at, updated_at)\nVALUES ('movie', $1, $2, $3, $4)\nON CONFLICT DO NOTHING\nRETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "510ec368b4679a8416ba7091f788b78dc5b3766b4855737cc66ceb7782daa46e"
+}

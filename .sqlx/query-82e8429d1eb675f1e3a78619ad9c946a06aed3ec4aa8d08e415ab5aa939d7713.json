@@ -1,0 +1,39 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.id, d.updated_at, array_agg(dr.resolution) as resolutions\nFROM download d\n         inner JOIN download_resolution dr on d.id = dr.download_id\nWHERE d.variant = 'episode'\n  AND d.provider = $1\n  AND d.title = $2\n  AND d.episode = $3\n  AND COALESCE(d.decimal, -1) = COALESCE($4, -1)\n  AND COALESCE(d.version, -1) = COALESCE($5, -1)\n  AND COALESCE(d.extra, '') = COALESCE($6, '')\nGROUP BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "resolutions",
+        "type_info": "Int2Array"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "82e8429d1eb675f1e3a78619ad9c946a06aed3ec4aa8d08e415ab5aa939d7713"
+}

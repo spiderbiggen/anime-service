@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT updated_at FROM episode_download ORDER BY updated_at DESC LIMIT 1",
+  "query": "SELECT MAX(updated_at) AS updated_at\nFROM download",
   "describe": {
     "columns": [
       {
@@ -13,8 +13,8 @@
       "Left": []
     },
     "nullable": [
-      false
+      null
     ]
   },
-  "hash": "3e1709f0695b18f0948c4d1fefd34c2dd24a31c4784e1add75f18c5ebc79ebc4"
+  "hash": "47bd2d872c0a0c4e7d975f8f9e10472d83a9e3edc5557b7a798228e90a8742e2"
 }
