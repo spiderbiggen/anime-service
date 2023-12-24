@@ -32,7 +32,7 @@ pub struct Poller<Handler: NewDownloadsHandler> {
 
 impl Poller<PersistentPoller> {
     pub async fn persistent_from_state(state: &AppState) -> anyhow::Result<Self> {
-        let last_update = repository::groups::last_updated(&state.pool)
+        let last_update = repository::downloads::last_updated(&state.pool)
             .await?
             .unwrap_or_else(Utc::now);
         Ok(Self::new_with_last_updated_at(
@@ -163,7 +163,7 @@ impl PersistentPoller {
     }
 
     async fn save_downloads(&self, groups: &[DownloadGroup]) -> anyhow::Result<()> {
-        repository::groups::insert_groups(self.database.clone(), groups).await?;
+        repository::downloads::insert_groups(self.database.clone(), groups).await?;
         Ok(())
     }
 }

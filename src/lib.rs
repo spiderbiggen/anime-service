@@ -1,4 +1,5 @@
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::sync::Arc;
 
 use anyhow::Result;
 use axum::body::Body;
@@ -104,43 +105,41 @@ pub fn unversioned_routes() -> AxumRouter<AppState> {
 }
 
 pub fn v1_routes() -> AxumRouter<AppState> {
-    AxumRouter::new()
-        .route(
-            "/downloads/batches",
-            get(controllers::rest::batch::find_downloads),
-        )
-        .route(
-            "/downloads/batches/updates",
-            get(controllers::rest::batch::get_downloads_events),
-        )
-        .route(
-            "/downloads/episodes",
-            get(controllers::rest::episode::find_downloads),
-        )
-        .route(
-            "/downloads/episodes/updates",
-            get(controllers::rest::episode::get_downloads_events),
-        )
-        .route(
-            "/downloads/movies",
-            get(controllers::rest::movie::find_downloads),
-        )
-        .route(
-            "/downloads/movies/updates",
-            get(controllers::rest::movie::get_downloads_events),
-        )
-        .route(
-            "/downloads",
-            get(controllers::rest::downloads::find_downloads),
-        )
-        .route(
-            "/downloads/updates",
-            get(controllers::rest::downloads::get_downloads_events),
-        )
+    use controllers::rest::{batch, downloads, episode, movie};
+
+    AxumRouter::new().nest(
+        "/downloads",
+        AxumRouter::new()
+            .route("/", get(downloads::find_downloads))
+            .route("/updates", get(downloads::get_downloads_events))
+            .nest(
+                "/batches",
+                AxumRouter::new()
+                    .route("/", get(batch::find_downloads))
+                    .route("/updates", get(batch::get_downloads_events)),
+            )
+            .nest(
+                "/episodes",
+                AxumRouter::new()
+                    .route("/", get(episode::find_downloads))
+                    .route("/updates", get(episode::get_downloads_events)),
+            )
+            .nest(
+                "/movies",
+                AxumRouter::new()
+                    .route("/", get(movie::find_downloads))
+                    .route("/updates", get(movie::get_downloads_events)),
+            ),
+    )
 }
 
 pub fn create_tonic_router(sender: Sender<models::DownloadGroup>) -> TonicRouter {
-    use proto::api::v1::downloads_server::DownloadsServer;
-    let svc = DownloadsServer::new(controllers::grpc::DownloadService { sender });
-    tonic::transport::Server::builder().add_service(svc)
+    use controllers::grpc::DownloadService;
+    use proto::api::v1::downloads_server::DownloadsServer as V1DownloadsServer;
+    use proto::api::v2::downloads_server::DownloadsServer as V2DownloadsServer;
+
+    let service = Arc::new(DownloadService { sender });
+    tonic::transport::Server::builder()
+        .add_service(V1DownloadsServer::from_arc(service.clone()))
+        .add_service(V2DownloadsServer::from_arc(service))
 }

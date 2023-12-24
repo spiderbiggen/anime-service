@@ -197,15 +197,15 @@ impl From<DownloadGroup> for Option<proto::api::v1::DownloadCollection> {
     }
 }
 
-impl From<DownloadGroup> for Option<proto::api::v2::DownloadCollection> {
+impl From<DownloadGroup> for proto::api::v2::DownloadCollection {
     fn from(val: DownloadGroup) -> Self {
-        Some(proto::api::v2::DownloadCollection {
+        proto::api::v2::DownloadCollection {
             created_at: Some(prost_timestamp(val.created_at)),
             updated_at: Some(prost_timestamp(val.updated_at)),
             title: val.title,
             variant: Some(val.variant.into()),
             downloads: val.downloads.into_iter().map(|d| d.into()).collect(),
-        })
+        }
     }
 }
 

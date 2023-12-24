@@ -1,16 +1,28 @@
-pub mod batch;
-pub mod episode;
-pub mod movie;
+use std::cmp::Reverse;
 
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use futures::StreamExt;
 use sqlx::types::Uuid;
 use sqlx::{query_file, Connection, Executor, Pool, Postgres};
-use std::cmp::Reverse;
 
-use crate::datasource::repository::{batch, download_resolution, episode, movie, Variant};
+use crate::datasource::repository::download_resolutions;
 use crate::models::{DownloadGroup, DownloadVariant, Episode};
+
+pub mod batch;
+pub mod episode;
+pub mod movie;
+
+// TODO: remove default and provide dynamically
+const PROVIDER_DEFAULT: &str = "SubsPlease";
+
+#[derive(Debug, Copy, Clone, sqlx::Type)]
+#[sqlx(type_name = "download_variant", rename_all = "lowercase")]
+pub enum Variant {
+    Batch,
+    Episode,
+    Movie,
+}
 
 pub async fn insert_groups(
     executor: Pool<Postgres>,
@@ -43,7 +55,7 @@ pub async fn get_with_downloads(
 
     let episode_ids: Vec<_> = rows.iter().map(|r| r.id).collect();
     let mut downloads =
-        download_resolution::resolutions_for_downloads(&mut *transaction, &episode_ids).await?;
+        download_resolutions::resolutions_for_downloads(&mut *transaction, &episode_ids).await?;
     transaction.commit().await?;
 
     let result: anyhow::Result<Vec<_>> = rows
@@ -122,7 +134,7 @@ where
         if resolutions.contains(&download.resolution) {
             continue;
         }
-        download_resolution::insert(&mut *transaction, id, download).await?;
+        download_resolutions::insert(&mut *transaction, id, download).await?;
     }
 
     transaction.commit().await?;
@@ -201,4 +213,31 @@ where
         });
     }
     Ok(rows)
+}
+
+struct RawSingleDownloadResult {
+    id: Uuid,
+    updated_at: DateTime<Utc>,
+    resolutions: Option<Vec<i16>>,
+}
+
+struct SingleDownloadResult {
+    id: Uuid,
+    updated_at: DateTime<Utc>,
+    resolutions: Vec<u16>,
+}
+
+impl From<RawSingleDownloadResult> for SingleDownloadResult {
+    fn from(value: RawSingleDownloadResult) -> Self {
+        Self {
+            id: value.id,
+            updated_at: value.updated_at,
+            resolutions: value
+                .resolutions
+                .into_iter()
+                .flatten()
+                .map(|res| res as u16)
+                .collect(),
+        }
+    }
 }

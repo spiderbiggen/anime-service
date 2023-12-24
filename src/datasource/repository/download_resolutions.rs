@@ -6,7 +6,7 @@ use futures::StreamExt;
 use sqlx::types::Uuid;
 use sqlx::{query_file_as, Executor, Postgres};
 
-use crate::datasource::repository::download_resolution::models::DownloadEntity;
+use crate::datasource::repository::download_resolutions::models::DownloadEntity;
 use crate::models::Download;
 
 pub(super) mod models {
@@ -59,7 +59,7 @@ where
     Ok(())
 }
 
-pub async fn resolutions_for_downloads<'e, E>(
+pub(super) async fn resolutions_for_downloads<'e, E>(
     executor: E,
     ids: &[Uuid],
 ) -> Result<HashMap<Uuid, Vec<Download>, RandomState>>

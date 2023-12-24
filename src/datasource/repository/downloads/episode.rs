@@ -3,13 +3,10 @@ use chrono::{DateTime, Utc};
 use sqlx::types::Uuid;
 use sqlx::{Connection, Executor, Postgres, Transaction};
 
-use super::update_download;
-use crate::datasource::repository::{
-    RawSingleDownloadResult, SingleDownloadResult, PROVIDER_DEFAULT,
-};
+use super::{update_download, RawSingleDownloadResult, SingleDownloadResult, PROVIDER_DEFAULT};
 use crate::models::Episode;
 
-pub(in crate::datasource::repository) async fn upsert<C>(
+pub(super) async fn upsert<C>(
     conn: &mut C,
     title: &str,
     episode: &Episode,
@@ -66,7 +63,7 @@ async fn insert_episode(
 ) -> Result<Uuid> {
     let query = sqlx::query_file!(
         "queries/episode/insert_episode_download.sql",
-        "SubsPlease",
+        PROVIDER_DEFAULT,
         title,
         episode.episode as i32,
         episode.decimal.map(|e| e as i32),

@@ -15,8 +15,7 @@ pub(crate) mod unversioned {
 
     use crate::controllers::rest::DownloadQuery;
     use crate::datasource::repository;
-    use crate::datasource::repository::download::QueryOptions;
-    use crate::datasource::repository::Variant;
+    use crate::datasource::repository::downloads::{QueryOptions, Variant};
     use crate::errors::Error;
     use crate::models;
     use crate::models::{Download, DownloadGroup, DownloadVariant};
@@ -46,7 +45,7 @@ pub(crate) mod unversioned {
         let options = QueryOptions {
             title: params.title,
         };
-        let downloads = repository::download::get_with_downloads(
+        let downloads = repository::downloads::get_with_downloads(
             pool.clone(),
             Some(Variant::Episode),
             Some(options),
@@ -136,8 +135,7 @@ pub(crate) mod batch {
 
     use crate::controllers::rest::DownloadQuery;
     use crate::datasource::repository;
-    use crate::datasource::repository::download::QueryOptions;
-    use crate::datasource::repository::Variant;
+    use crate::datasource::repository::downloads::{QueryOptions, Variant};
     use crate::errors::Error;
     use crate::models::{DownloadGroup, DownloadVariant};
     use crate::state::{AppState, DBPool};
@@ -149,7 +147,7 @@ pub(crate) mod batch {
         let options = QueryOptions {
             title: params.title,
         };
-        let downloads = repository::download::get_with_downloads(
+        let downloads = repository::downloads::get_with_downloads(
             pool.clone(),
             Some(Variant::Batch),
             Some(options),
@@ -192,8 +190,7 @@ pub(crate) mod episode {
 
     use crate::controllers::rest::DownloadQuery;
     use crate::datasource::repository;
-    use crate::datasource::repository::download::QueryOptions;
-    use crate::datasource::repository::Variant;
+    use crate::datasource::repository::downloads::{QueryOptions, Variant};
     use crate::errors::Error;
     use crate::models::{DownloadGroup, DownloadVariant};
     use crate::state::{AppState, DBPool};
@@ -205,7 +202,7 @@ pub(crate) mod episode {
         let options = QueryOptions {
             title: params.title,
         };
-        let downloads = repository::download::get_with_downloads(
+        let downloads = repository::downloads::get_with_downloads(
             pool.clone(),
             Some(Variant::Episode),
             Some(options),
@@ -246,8 +243,7 @@ pub(crate) mod movie {
 
     use crate::controllers::rest::DownloadQuery;
     use crate::datasource::repository;
-    use crate::datasource::repository::download::QueryOptions;
-    use crate::datasource::repository::Variant;
+    use crate::datasource::repository::downloads::{QueryOptions, Variant};
     use crate::errors::Error;
     use crate::models::{DownloadGroup, DownloadVariant};
     use crate::state::{AppState, DBPool};
@@ -259,7 +255,7 @@ pub(crate) mod movie {
         let options = QueryOptions {
             title: params.title,
         };
-        let downloads = repository::download::get_with_downloads(
+        let downloads = repository::downloads::get_with_downloads(
             pool.clone(),
             Some(Variant::Movie),
             Some(options),
@@ -300,7 +296,7 @@ pub mod downloads {
 
     use crate::controllers::rest::DownloadQuery;
     use crate::datasource::repository;
-    use crate::datasource::repository::download::QueryOptions;
+    use crate::datasource::repository::downloads::QueryOptions;
     use crate::errors::Error;
     use crate::models::DownloadGroup;
     use crate::state::{AppState, DBPool};
@@ -313,7 +309,7 @@ pub mod downloads {
             title: params.title,
         };
         let downloads =
-            repository::download::get_with_downloads(pool.clone(), None, Some(options)).await?;
+            repository::downloads::get_with_downloads(pool.clone(), None, Some(options)).await?;
         Ok(Json(downloads))
     }
 
