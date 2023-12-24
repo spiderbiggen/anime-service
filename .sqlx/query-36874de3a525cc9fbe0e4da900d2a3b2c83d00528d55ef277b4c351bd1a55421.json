@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE batch_download\nSET updated_at = $2\nWHERE id = $1",
+  "query": "UPDATE download\nSET updated_at = $2\nWHERE id = $1",
   "describe": {
     "columns": [],
     "parameters": {
@@ -11,5 +11,5 @@
     },
     "nullable": []
   },
-  "hash": "979077ac2045caf137e25c19223b501aa2d7fcdc8ac8c98202f4195f36054e4e"
+  "hash": "36874de3a525cc9fbe0e4da900d2a3b2c83d00528d55ef277b4c351bd1a55421"
 }

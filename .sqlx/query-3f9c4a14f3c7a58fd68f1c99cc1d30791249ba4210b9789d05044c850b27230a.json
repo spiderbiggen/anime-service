@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT ed.id, ed.updated_at, ARRAY_AGG(edr.resolution) AS resolutions\nFROM movie_download ed\n         JOIN movie_download_resolution edr ON ed.id = edr.movie_download_id\nWHERE provider = $1\n  AND ed.title = $2\nGROUP BY id",
+  "query": "SELECT d.id, d.updated_at, ARRAY_AGG(dr.resolution) AS resolutions\nFROM download d\n         JOIN download_resolution dr ON d.id = dr.download_id\nWHERE d.variant = 'movie'\n  AND d.provider = $1\n  AND d.title = $2\nGROUP BY d.id",
   "describe": {
     "columns": [
       {
@@ -31,5 +31,5 @@
       null
     ]
   },
-  "hash": "6988c43e55a70f3c6bf7a73eb21224fd2fcef301d0d6e76c514b5940cfcfdc09"
+  "hash": "3f9c4a14f3c7a58fd68f1c99cc1d30791249ba4210b9789d05044c850b27230a"
 }

@@ -1,30 +1,34 @@
 use chrono::{DateTime, Utc};
 use sqlx::types::Uuid;
 
-pub mod batch;
-pub mod episode;
-pub mod movie;
-
-mod download;
-pub mod groups;
+pub mod download;
+pub mod download_resolution;
 
 // TODO: remove default and provide dynamically
 const PROVIDER_DEFAULT: &str = "SubsPlease";
 
-struct RawSingleResult {
+#[derive(Debug, Copy, Clone, sqlx::Type)]
+#[sqlx(type_name = "download_variant", rename_all = "lowercase")]
+pub enum Variant {
+    Batch,
+    Episode,
+    Movie,
+}
+
+struct RawSingleDownloadResult {
     id: Uuid,
     updated_at: DateTime<Utc>,
     resolutions: Option<Vec<i16>>,
 }
 
-struct SingleResult {
+struct SingleDownloadResult {
     id: Uuid,
     updated_at: DateTime<Utc>,
     resolutions: Vec<u16>,
 }
 
-impl From<RawSingleResult> for SingleResult {
-    fn from(value: RawSingleResult) -> Self {
+impl From<RawSingleDownloadResult> for SingleDownloadResult {
+    fn from(value: RawSingleDownloadResult) -> Self {
         Self {
             id: value.id,
             updated_at: value.updated_at,

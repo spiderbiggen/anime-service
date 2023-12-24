@@ -210,7 +210,7 @@ impl From<DownloadGroup> for Option<proto::api::v2::DownloadCollection> {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type")]
+#[serde(tag = "variant", rename_all = "snake_case")]
 pub enum DownloadVariant {
     Batch(RangeInclusive<u32>),
     Episode(Episode),

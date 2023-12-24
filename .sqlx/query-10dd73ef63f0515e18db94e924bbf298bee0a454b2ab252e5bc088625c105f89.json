@@ -1,0 +1,111 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id,\n       provider,\n       title,\n       episode,\n       decimal,\n       version,\n       created_at,\n       updated_at,\n       extra,\n       variant as \"variant: Variant\",\n       start_index,\n       end_index\nFROM download\nWHERE ($1::download_variant IS NULL OR variant = $1::download_variant)\n  AND (title ILIKE COALESCE($2, '') || '%')\nORDER BY updated_at DESC\nLIMIT 25;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "provider",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "episode",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "decimal",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "version",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "extra",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "variant: Variant",
+        "type_info": {
+          "Custom": {
+            "name": "download_variant",
+            "kind": {
+              "Enum": [
+                "batch",
+                "episode",
+                "movie"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "start_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "end_index",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "download_variant",
+            "kind": {
+              "Enum": [
+                "batch",
+                "episode",
+                "movie"
+              ]
+            }
+          }
+        },
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "10dd73ef63f0515e18db94e924bbf298bee0a454b2ab252e5bc088625c105f89"
+}

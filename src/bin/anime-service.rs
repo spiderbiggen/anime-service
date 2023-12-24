@@ -1,5 +1,6 @@
 use anime_service::{jobs::poller, state::AppState};
 use anyhow::Result;
+use std::time::Duration;
 use tracing_subscriber::prelude::*;
 
 #[tokio::main]
@@ -13,7 +14,7 @@ async fn main() -> Result<()> {
     let app_state = AppState::new()?;
     sqlx::migrate!().run(&app_state.pool).await?;
     let poller = poller::Poller::persistent_from_state(&app_state).await?;
-    poller.start()?;
+    poller.start_with_period(Duration::from_secs(60))?;
 
     anime_service::serve_combined(app_state).await?;
     Ok(())

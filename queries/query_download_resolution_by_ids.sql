@@ -1,0 +1,1 @@
+SELECT * FROM download_resolution WHERE download_id = ANY($1) ORDER BY resolution DESC;

@@ -15,7 +15,8 @@ pub(crate) mod unversioned {
 
     use crate::controllers::rest::DownloadQuery;
     use crate::datasource::repository;
-    use crate::datasource::repository::episode::EpisodeQueryOptions;
+    use crate::datasource::repository::download::QueryOptions;
+    use crate::datasource::repository::Variant;
     use crate::errors::Error;
     use crate::models;
     use crate::models::{Download, DownloadGroup, DownloadVariant};
@@ -42,11 +43,15 @@ pub(crate) mod unversioned {
         Query(params): Query<DownloadQuery>,
         State(pool): State<DBPool>,
     ) -> Result<Json<JsonValue>, Error> {
-        let options = EpisodeQueryOptions {
+        let options = QueryOptions {
             title: params.title,
         };
-        let downloads =
-            repository::episode::get_with_downloads(pool.clone(), Some(options)).await?;
+        let downloads = repository::download::get_with_downloads(
+            pool.clone(),
+            Some(Variant::Episode),
+            Some(options),
+        )
+        .await?;
         let json = downloads
             .into_iter()
             .filter_map(map_old_download_group)
@@ -62,13 +67,13 @@ pub(crate) mod unversioned {
             loop {
                 match rx.recv().await {
                     Ok(i) => {
-                            if let Some(group) = map_old_download_group(i) {
-                                match Event::default().event("download").json_data(group) {
-                                    Ok(event) => yield  event,
-                                    Err(e) => error!(error = ?e, "failed to serialize"),
-                                }
+                        if let Some(group) = map_old_download_group(i) {
+                            match Event::default().event("download").json_data(group) {
+                                Ok(event) => yield  event,
+                                Err(e) => error!(error = ?e, "failed to serialize"),
                             }
                         }
+                    }
                     Err(e) => error!(error = ?e, "sender closed"),
                 }
             };
@@ -119,25 +124,58 @@ pub(crate) struct DownloadQuery {
 }
 
 pub(crate) mod batch {
+    use std::convert::Infallible;
+
+    use async_stream::try_stream;
     use axum::extract::{Query, State};
+    use axum::response::sse::{Event, KeepAlive};
+    use axum::response::Sse;
     use axum::Json;
+    use futures::Stream;
+    use tracing::error;
 
     use crate::controllers::rest::DownloadQuery;
     use crate::datasource::repository;
-    use crate::datasource::repository::batch::BatchQueryOptions;
+    use crate::datasource::repository::download::QueryOptions;
+    use crate::datasource::repository::Variant;
     use crate::errors::Error;
-    use crate::models::DownloadGroup;
-    use crate::state::DBPool;
+    use crate::models::{DownloadGroup, DownloadVariant};
+    use crate::state::{AppState, DBPool};
 
     pub(crate) async fn find_downloads(
         Query(params): Query<DownloadQuery>,
         State(pool): State<DBPool>,
     ) -> Result<Json<Vec<DownloadGroup>>, Error> {
-        let options = BatchQueryOptions {
+        let options = QueryOptions {
             title: params.title,
         };
-        let downloads = repository::batch::get_with_downloads(pool.clone(), Some(options)).await?;
+        let downloads = repository::download::get_with_downloads(
+            pool.clone(),
+            Some(Variant::Batch),
+            Some(options),
+        )
+        .await?;
         Ok(Json(downloads))
+    }
+
+    pub(crate) async fn get_downloads_events(
+        State(state): State<AppState>,
+    ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+        let mut rx = state.downloads_channel.subscribe();
+        let stream = try_stream! {
+            loop {
+                match rx.recv().await {
+                    Ok(i) => if let DownloadVariant::Batch(_) = i.variant {
+                        match Event::default().event("download").json_data(i) {
+                            Ok(event) => yield  event,
+                            Err(e) => error!(error = ?e, "failed to serialize"),
+                        }
+                    }
+                    Err(e) => error!(error = ?e, "sender closed"),
+                }
+            }
+        };
+        Sse::new(stream).keep_alive(KeepAlive::new())
     }
 }
 
@@ -154,7 +192,115 @@ pub(crate) mod episode {
 
     use crate::controllers::rest::DownloadQuery;
     use crate::datasource::repository;
-    use crate::datasource::repository::episode::EpisodeQueryOptions;
+    use crate::datasource::repository::download::QueryOptions;
+    use crate::datasource::repository::Variant;
+    use crate::errors::Error;
+    use crate::models::{DownloadGroup, DownloadVariant};
+    use crate::state::{AppState, DBPool};
+
+    pub(crate) async fn find_downloads(
+        Query(params): Query<DownloadQuery>,
+        State(pool): State<DBPool>,
+    ) -> Result<Json<Vec<DownloadGroup>>, Error> {
+        let options = QueryOptions {
+            title: params.title,
+        };
+        let downloads = repository::download::get_with_downloads(
+            pool.clone(),
+            Some(Variant::Episode),
+            Some(options),
+        )
+        .await?;
+        Ok(Json(downloads))
+    }
+
+    pub(crate) async fn get_downloads_events(
+        State(state): State<AppState>,
+    ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+        let mut rx = state.downloads_channel.subscribe();
+        let stream = try_stream! {
+            loop {
+                match rx.recv().await {
+                    Ok(i) => if let DownloadVariant::Episode(_) = i.variant { match Event::default().event("download").json_data(i) {
+                        Ok(event) => yield  event,
+                        Err(e) => error!(error = ?e, "failed to serialize"),
+                    } }
+                    Err(e) => error!(error = ?e, "sender closed"),
+                }
+            }
+        };
+        Sse::new(stream).keep_alive(KeepAlive::new())
+    }
+}
+
+pub(crate) mod movie {
+    use std::convert::Infallible;
+
+    use async_stream::try_stream;
+    use axum::extract::{Query, State};
+    use axum::response::sse::{Event, KeepAlive};
+    use axum::response::Sse;
+    use axum::Json;
+    use futures::Stream;
+    use tracing::error;
+
+    use crate::controllers::rest::DownloadQuery;
+    use crate::datasource::repository;
+    use crate::datasource::repository::download::QueryOptions;
+    use crate::datasource::repository::Variant;
+    use crate::errors::Error;
+    use crate::models::{DownloadGroup, DownloadVariant};
+    use crate::state::{AppState, DBPool};
+
+    pub(crate) async fn find_downloads(
+        Query(params): Query<DownloadQuery>,
+        State(pool): State<DBPool>,
+    ) -> Result<Json<Vec<DownloadGroup>>, Error> {
+        let options = QueryOptions {
+            title: params.title,
+        };
+        let downloads = repository::download::get_with_downloads(
+            pool.clone(),
+            Some(Variant::Movie),
+            Some(options),
+        )
+        .await?;
+        Ok(Json(downloads))
+    }
+
+    pub(crate) async fn get_downloads_events(
+        State(state): State<AppState>,
+    ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+        let mut rx = state.downloads_channel.subscribe();
+        let stream = try_stream! {
+            loop {
+                match rx.recv().await {
+                    Ok(i) => if let DownloadVariant::Movie = i.variant { match Event::default().event("download").json_data(i) {
+                        Ok(event) => yield  event,
+                        Err(e) => error!(error = ?e, "failed to serialize"),
+                    } }
+                    Err(e) => error!(error = ?e, "sender closed"),
+                }
+            }
+        };
+        Sse::new(stream).keep_alive(KeepAlive::new())
+    }
+}
+
+pub mod downloads {
+    use std::convert::Infallible;
+
+    use async_stream::try_stream;
+    use axum::extract::{Query, State};
+    use axum::response::sse::{Event, KeepAlive};
+    use axum::response::Sse;
+    use axum::Json;
+    use futures::Stream;
+    use tracing::error;
+
+    use crate::controllers::rest::DownloadQuery;
+    use crate::datasource::repository;
+    use crate::datasource::repository::download::QueryOptions;
     use crate::errors::Error;
     use crate::models::DownloadGroup;
     use crate::state::{AppState, DBPool};
@@ -163,11 +309,11 @@ pub(crate) mod episode {
         Query(params): Query<DownloadQuery>,
         State(pool): State<DBPool>,
     ) -> Result<Json<Vec<DownloadGroup>>, Error> {
-        let options = EpisodeQueryOptions {
+        let options = QueryOptions {
             title: params.title,
         };
         let downloads =
-            repository::episode::get_with_downloads(pool.clone(), Some(options)).await?;
+            repository::download::get_with_downloads(pool.clone(), None, Some(options)).await?;
         Ok(Json(downloads))
     }
 
@@ -181,34 +327,11 @@ pub(crate) mod episode {
                     Ok(i) => match Event::default().event("download").json_data(i) {
                         Ok(event) => yield  event,
                         Err(e) => error!(error = ?e, "failed to serialize"),
-                    },
+                    }
                     Err(e) => error!(error = ?e, "sender closed"),
                 }
             }
         };
         Sse::new(stream).keep_alive(KeepAlive::new())
-    }
-}
-
-pub(crate) mod movie {
-    use axum::extract::{Query, State};
-    use axum::Json;
-
-    use crate::controllers::rest::DownloadQuery;
-    use crate::datasource::repository;
-    use crate::datasource::repository::movie::MovieQueryOptions;
-    use crate::errors::Error;
-    use crate::models::DownloadGroup;
-    use crate::state::DBPool;
-
-    pub(crate) async fn find_downloads(
-        Query(params): Query<DownloadQuery>,
-        State(pool): State<DBPool>,
-    ) -> Result<Json<Vec<DownloadGroup>>, Error> {
-        let options = MovieQueryOptions {
-            title: params.title,
-        };
-        let downloads = repository::movie::get_with_downloads(pool.clone(), Some(options)).await?;
-        Ok(Json(downloads))
     }
 }

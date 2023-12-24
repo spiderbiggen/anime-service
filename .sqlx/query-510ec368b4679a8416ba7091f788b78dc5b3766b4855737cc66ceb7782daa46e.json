@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO batch_download (provider, title, start_index, end_index, created_at, updated_at)\nVALUES ($1, $2, $3, $4, $5, $6)\nON CONFLICT DO NOTHING\nRETURNING id",
+  "query": "INSERT INTO download (variant, provider, title, created_at, updated_at)\nVALUES ('movie', $1, $2, $3, $4)\nON CONFLICT DO NOTHING\nRETURNING id",
   "describe": {
     "columns": [
       {
@@ -13,8 +13,6 @@
       "Left": [
         "Varchar",
         "Varchar",
-        "Int4",
-        "Int4",
         "Timestamptz",
         "Timestamptz"
       ]
@@ -23,5 +21,5 @@
       false
     ]
   },
-  "hash": "565ebbb243162e073f596a249f3ee6fa0eddded0f11d67a4db5df4c8d56b2b98"
+  "hash": "510ec368b4679a8416ba7091f788b78dc5b3766b4855737cc66ceb7782daa46e"
 }

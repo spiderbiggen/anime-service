@@ -110,6 +110,10 @@ pub fn v1_routes() -> AxumRouter<AppState> {
             get(controllers::rest::batch::find_downloads),
         )
         .route(
+            "/downloads/batches/updates",
+            get(controllers::rest::batch::get_downloads_events),
+        )
+        .route(
             "/downloads/episodes",
             get(controllers::rest::episode::find_downloads),
         )
@@ -120,6 +124,18 @@ pub fn v1_routes() -> AxumRouter<AppState> {
         .route(
             "/downloads/movies",
             get(controllers::rest::movie::find_downloads),
+        )
+        .route(
+            "/downloads/movies/updates",
+            get(controllers::rest::movie::get_downloads_events),
+        )
+        .route(
+            "/downloads",
+            get(controllers::rest::downloads::find_downloads),
+        )
+        .route(
+            "/downloads/updates",
+            get(controllers::rest::downloads::get_downloads_events),
         )
 }
 
