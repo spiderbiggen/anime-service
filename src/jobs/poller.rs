@@ -1,15 +1,14 @@
 use std::default::Default;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::anyhow;
 use axum::async_trait;
 use chrono::{DateTime, Utc};
 use tokio::sync::broadcast::Sender;
-use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
-use tokio::time::{interval_at, Instant, Interval, MissedTickBehavior};
-use tracing::{error, instrument, trace};
+use tokio::time::{interval_at, timeout, Instant, Interval, MissedTickBehavior};
+use tracing::{error, info, instrument, trace};
 
 use datasource::repository;
 
@@ -74,24 +73,31 @@ impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
         tokio::task::spawn(async move {
             loop {
                 interval.tick().await;
-                match self.execute(*self.last_update.lock().await).await {
-                    Ok(update) => *self.last_update.lock().await = update,
-                    Err(err) => error!("failed to refresh anime downloads: {err}"),
-                }
+                let last_updated_at = *self.last_update.lock().unwrap();
+                let last_updated_at = match self.execute(last_updated_at).await {
+                    Ok(update) => update,
+                    Err(err) => {
+                        error!("failed to refresh anime downloads: {err}");
+                        continue;
+                    }
+                };
+                *self.last_update.lock().unwrap() = last_updated_at;
             }
         })
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip(self))]
     async fn execute(&self, last_update: DateTime<Utc>) -> anyhow::Result<DateTime<Utc>> {
         trace!("fetching anime downloads");
         let mut groups = get_groups(&self.client).await?;
+        trace!("found {count} anime downloads", count = groups.len());
         groups.sort_by_key(|g| g.updated_at);
         let groups: Vec<_> = groups
             .into_iter()
             .skip_while(|g| g.updated_at <= last_update)
             .collect();
         if groups.is_empty() {
+            info!("Found no new downloads");
             return Ok(last_update);
         }
 
@@ -107,12 +113,11 @@ impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
     }
 }
 
+#[instrument(skip_all, err)]
 async fn get_groups(client: &reqwest::Client) -> anyhow::Result<Vec<DownloadGroup>> {
-    let result: Vec<DownloadGroup> = nyaa::groups(client, None)
-        .await?
-        .into_iter()
-        .map(|e| e.into())
-        .collect();
+    let groups_future = nyaa::groups(client, None);
+    let groups = timeout(Duration::from_secs(10), groups_future).await??;
+    let result: Vec<DownloadGroup> = groups.into_iter().map(|e| e.into()).collect();
     Ok(result)
 }
 

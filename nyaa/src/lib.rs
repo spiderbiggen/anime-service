@@ -7,7 +7,7 @@ use ahash::RandomState;
 use chrono::{DateTime, Utc};
 use reqwest::StatusCode;
 use rss::{Channel, Item};
-use tracing::{error, instrument};
+use tracing::{error, instrument, trace};
 use url::Url;
 
 use crate::parsers::ParsedDownload;
@@ -72,6 +72,7 @@ struct Entry {
     download: Download,
 }
 
+#[instrument(skip(client))]
 pub async fn groups(
     client: &reqwest::Client,
     title: Option<&str>,
@@ -82,9 +83,17 @@ pub async fn groups(
     Ok(map_groups(entries))
 }
 
+#[instrument(skip_all, fields(url = %url))]
 async fn get_feed(client: &reqwest::Client, url: Url) -> Result<Channel, Error> {
-    let response = client.get(url).send().await?;
+    trace!("Requesting RSS feed");
+    let request = client.get(url).send();
+    let response = request.await?;
     let status = response.status();
+    trace!(
+        "Got response with status: {:?} and length: {:?} bytes",
+        status,
+        response.content_length()
+    );
     if !status.is_success() {
         return Err(Error::Status(status));
     }
