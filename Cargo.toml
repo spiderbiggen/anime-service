@@ -40,7 +40,7 @@ tokio-stream = { version = "0.1.11", features = ["sync"] }
 tokio-util = "0.7.8"
 tonic = { version = "0.10.2", features = ["gzip"] }
 tower = { version = "0.4", features = ["steer"] }
-tower-http = { version = "0.4", features = ["trace", "decompression-full", "compression-full"] }
+tower-http = { version = "0.5", features = ["trace", "decompression-full", "compression-full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = { version = "2", features = ["serde"] }
