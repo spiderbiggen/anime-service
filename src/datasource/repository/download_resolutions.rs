@@ -76,8 +76,7 @@ where
     while let Some(row) = stream.next().await {
         let download_entity = row?;
         let id = download_entity.download_id;
-        let download = download_entity.try_into()?;
-        episodes.entry(id).or_default().push(download)
+        episodes.entry(id).or_default().push(download_entity.into())
     }
     Ok(episodes)
 }

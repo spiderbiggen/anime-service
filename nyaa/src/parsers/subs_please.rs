@@ -86,7 +86,7 @@ pub(crate) fn parse_filename(value: &str) -> PResult<ParsedDownload, InputError<
                     resolution,
                 }),
                 Some(index) => {
-                    let mut slice = &full_title[index + 2..];
+                    let mut slice = full_title[index..].trim_start_matches(['-', ' ', '#']);
                     match parse_episode_identifier(&mut slice)? {
                         None => Ok(ParsedDownload {
                             source,
