@@ -92,7 +92,7 @@ impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
         let mut groups = get_groups(&self.client).await?;
         trace!("found {count} anime downloads", count = groups.len());
         groups.sort_by_key(|g| g.updated_at);
-        println!("{:#?}", groups);
+
         let groups: Vec<_> = groups
             .into_iter()
             .skip_while(|g| g.updated_at <= last_update)
