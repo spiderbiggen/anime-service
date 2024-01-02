@@ -74,7 +74,7 @@ impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
             loop {
                 interval.tick().await;
                 let last_updated_at = *self.last_update.lock().unwrap();
-                let last_updated_at = match self.execute(last_updated_at).await {
+                let last_updated_at = match self.poll_nyaa(last_updated_at).await {
                     Ok(update) => update,
                     Err(err) => {
                         error!("failed to refresh anime downloads: {err}");
@@ -87,11 +87,12 @@ impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
     }
 
     #[instrument(skip(self))]
-    async fn execute(&self, last_update: DateTime<Utc>) -> anyhow::Result<DateTime<Utc>> {
+    async fn poll_nyaa(&self, last_update: DateTime<Utc>) -> anyhow::Result<DateTime<Utc>> {
         trace!("fetching anime downloads");
         let mut groups = get_groups(&self.client).await?;
         trace!("found {count} anime downloads", count = groups.len());
         groups.sort_by_key(|g| g.updated_at);
+        println!("{:#?}", groups);
         let groups: Vec<_> = groups
             .into_iter()
             .skip_while(|g| g.updated_at <= last_update)
