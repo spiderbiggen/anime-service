@@ -76,7 +76,7 @@ struct Entry {
 pub async fn groups(
     client: &reqwest::Client,
     title: Option<&str>,
-) -> Result<Vec<AnimeDownloads>, Error> {
+) -> Result<impl Iterator<Item = AnimeDownloads>, Error> {
     let url = build_url(title)?;
     let val = get_feed(client, url).await?;
     let entries = val.items.into_iter().filter_map(|i| map_item(i).ok());
@@ -86,8 +86,7 @@ pub async fn groups(
 #[instrument(skip_all, fields(url = %url))]
 async fn get_feed(client: &reqwest::Client, url: Url) -> Result<Channel, Error> {
     trace!("Requesting RSS feed");
-    let request = client.get(url).send();
-    let response = request.await?;
+    let response = client.get(url).send().await?;
     let status = response.status();
     trace!(
         "Got response with status: {:?} and length: {:?} bytes",
@@ -98,8 +97,7 @@ async fn get_feed(client: &reqwest::Client, url: Url) -> Result<Channel, Error> 
         return Err(Error::Status(status));
     }
     let body = response.bytes().await?;
-    let channel = Channel::read_from(body.borrow())?;
-    Ok(channel)
+    Ok(Channel::read_from(body.borrow())?)
 }
 
 fn build_url(title: Option<&str>) -> Result<Url, Error> {
@@ -108,8 +106,8 @@ fn build_url(title: Option<&str>) -> Result<Url, Error> {
         query.push(' ');
         query.push_str(title.as_ref());
     }
-    let params: [(&str, &str); 3] = [("q", &query), ("c", "1_2"), ("f", "2")];
-    Ok(Url::parse_with_params("https://nyaa.si/?page=rss", params)?)
+    let params = [("page", "rss"), ("q", &query), ("c", "1_2"), ("f", "2")];
+    Ok(Url::parse_with_params("https://nyaa.si/", params)?)
 }
 
 #[instrument(err)]
@@ -132,7 +130,10 @@ fn map_item(item: Item) -> Result<Entry, Error> {
     })
 }
 
-fn map_groups(entries: impl Iterator<Item = Entry>) -> Vec<AnimeDownloads> {
+fn map_groups<I>(entries: I) -> impl Iterator<Item = AnimeDownloads>
+where
+    I: Iterator<Item = Entry>,
+{
     let mut result_map = HashMap::<_, Vec<_>, RandomState>::default();
     for entry in entries {
         result_map
@@ -148,5 +149,4 @@ fn map_groups(entries: impl Iterator<Item = Entry>) -> Vec<AnimeDownloads> {
             variant,
             downloads,
         })
-        .collect()
 }
