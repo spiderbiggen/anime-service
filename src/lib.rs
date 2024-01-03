@@ -20,6 +20,8 @@ use tracing::info;
 
 use state::AppState;
 
+use crate::controllers::rest::anime;
+
 mod controllers;
 mod datasource;
 pub mod errors;
@@ -75,7 +77,6 @@ pub fn create_axum_router(app_state: AppState) -> AxumRouter {
         DefaultPredicate::new().and(NotForContentType::const_new("text/event-stream"));
 
     AxumRouter::new()
-        .nest("/", unversioned_routes())
         .nest("/v1", v1_routes())
         .with_state(app_state)
         .layer(
@@ -86,51 +87,46 @@ pub fn create_axum_router(app_state: AppState) -> AxumRouter {
         )
 }
 
-pub fn unversioned_routes() -> AxumRouter<AppState> {
-    AxumRouter::new()
-        .route("/series", get(controllers::rest::unversioned::find_anime))
-        .route(
-            "/series/:id",
-            get(controllers::rest::unversioned::anime_by_id),
-        )
-        // Deprecated
-        .route(
-            "/downloads",
-            get(controllers::rest::unversioned::find_downloads),
-        )
-        .route(
-            "/downloads/updates",
-            get(controllers::rest::unversioned::get_downloads_events),
-        )
-}
-
 pub fn v1_routes() -> AxumRouter<AppState> {
     use controllers::rest::{batch, downloads, episode, movie};
 
-    AxumRouter::new().nest(
-        "/downloads",
-        AxumRouter::new()
-            .route("/", get(downloads::find_downloads))
-            .route("/updates", get(downloads::get_downloads_events))
-            .nest(
-                "/batches",
-                AxumRouter::new()
-                    .route("/", get(batch::find_downloads))
-                    .route("/updates", get(batch::get_downloads_events)),
-            )
-            .nest(
-                "/episodes",
-                AxumRouter::new()
-                    .route("/", get(episode::find_downloads))
-                    .route("/updates", get(episode::get_downloads_events)),
-            )
-            .nest(
-                "/movies",
-                AxumRouter::new()
-                    .route("/", get(movie::find_downloads))
-                    .route("/updates", get(movie::get_downloads_events)),
-            ),
-    )
+    AxumRouter::new()
+        .nest(
+            "/shows",
+            AxumRouter::new()
+                .route("/", get(anime::find))
+                .route("/:id", get(anime::by_id)),
+        )
+        .nest(
+            "/downloads",
+            AxumRouter::new()
+                .route("/", get(downloads::find_downloads))
+                .route("/updates", get(downloads::get_downloads_events))
+                .nest(
+                    "/anime",
+                    AxumRouter::new()
+                        .route("/", get(batch::find_downloads))
+                        .route("/updates", get(batch::get_downloads_events)),
+                )
+                .nest(
+                    "/batches",
+                    AxumRouter::new()
+                        .route("/", get(batch::find_downloads))
+                        .route("/updates", get(batch::get_downloads_events)),
+                )
+                .nest(
+                    "/episodes",
+                    AxumRouter::new()
+                        .route("/", get(episode::find_downloads))
+                        .route("/updates", get(episode::get_downloads_events)),
+                )
+                .nest(
+                    "/movies",
+                    AxumRouter::new()
+                        .route("/", get(movie::find_downloads))
+                        .route("/updates", get(movie::get_downloads_events)),
+                ),
+        )
 }
 
 pub fn create_tonic_router(sender: Sender<models::DownloadGroup>) -> TonicRouter {

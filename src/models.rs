@@ -104,7 +104,8 @@ pub struct Show {
     pub description: String,
     pub canonical_title: String,
     pub start_date: String,
-    pub end_date: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_date: Option<String>,
     pub poster_image: Images,
     pub cover_image: Option<Images>,
     pub episode_count: Option<u32>,
