@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
+use ahash::RandomState;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use std::collections::BTreeMap;
 use url::Url;
 
 #[derive(Deserialize, Clone, Debug)]
@@ -84,21 +86,21 @@ pub struct Attributes {
     pub titles: Titles,
     pub canonical_title: String,
     pub abbreviated_titles: Vec<String>,
-    pub average_rating: String,
-    pub rating_frequencies: BTreeMap<u32, String>,
+    pub average_rating: Option<String>,
+    pub rating_frequencies: HashMap<u32, String, RandomState>,
     pub user_count: u32,
     pub favorites_count: u32,
     pub start_date: String,
-    pub end_date: String,
-    pub next_release: Value,
+    pub end_date: Option<String>,
+    pub next_release: Option<Value>,
     // TODO when api provides a value
     pub popularity_rank: u32,
-    pub rating_rank: u32,
+    pub rating_rank: Option<u32>,
     pub age_rating: String,
-    pub age_rating_guide: String,
+    pub age_rating_guide: Option<String>,
     pub subtype: String,
     pub status: String,
-    pub tba: Value,
+    pub tba: Option<Value>,
     // TODO when api provides a value
     pub poster_image: Images,
     pub cover_image: Option<Images>,
