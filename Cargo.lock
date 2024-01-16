@@ -77,7 +77,7 @@ dependencies = [
 
 [[package]]
 name = "anime-service"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "ahash",
  "anyhow",
@@ -1091,13 +1091,15 @@ dependencies = [
 
 [[package]]
 name = "kitsu"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
+ "ahash",
  "chrono",
  "reqwest",
  "serde",
  "serde_json",
  "thiserror",
+ "tracing",
  "url",
 ]
 

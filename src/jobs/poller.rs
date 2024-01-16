@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use tokio::sync::broadcast::Sender;
 use tokio::task::JoinHandle;
 use tokio::time::{interval_at, timeout, Instant, Interval, MissedTickBehavior};
-use tracing::{error, info, instrument, trace};
+use tracing::{debug, error, info, instrument, trace};
 
 use datasource::repository;
 
@@ -89,36 +89,34 @@ impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
     #[instrument(skip(self))]
     async fn poll_nyaa(&self, last_update: DateTime<Utc>) -> anyhow::Result<DateTime<Utc>> {
         trace!("fetching anime downloads");
-        let mut groups = get_groups(&self.client).await?;
-        trace!("found {count} anime downloads", count = groups.len());
-        groups.sort_by_key(|g| g.updated_at);
-
-        let groups: Vec<_> = groups
-            .into_iter()
-            .skip_while(|g| g.updated_at <= last_update)
-            .collect();
-        if groups.is_empty() {
-            info!("Found no new downloads");
+        let groups = get_groups(&self.client).await?;
+        let filtered_groups: Vec<_> = groups.filter(|g| g.updated_at > last_update).collect();
+        if filtered_groups.is_empty() {
+            debug!("Found no new downloads");
             return Ok(last_update);
         }
 
-        let count = groups.len();
-        let last_update = groups
+        let count = filtered_groups.len();
+        let last_update = filtered_groups
             .iter()
             .map(|g| g.updated_at)
             .max()
             .unwrap_or(last_update);
-        self.downloads_handler.handle_new_downloads(groups).await?;
-        trace!("processed {count} groups");
+        self.downloads_handler
+            .handle_new_downloads(filtered_groups)
+            .await?;
+        info!("processed {count} groups");
         Ok(last_update)
     }
 }
 
 #[instrument(skip_all, err)]
-async fn get_groups(client: &reqwest::Client) -> anyhow::Result<Vec<DownloadGroup>> {
+async fn get_groups(
+    client: &reqwest::Client,
+) -> anyhow::Result<impl Iterator<Item = DownloadGroup>> {
     let groups_future = nyaa::groups(client, None);
     let groups = timeout(Duration::from_secs(10), groups_future).await??;
-    let result: Vec<DownloadGroup> = groups.into_iter().map(|e| e.into()).collect();
+    let result = groups.into_iter().map(|e| e.into());
     Ok(result)
 }
 

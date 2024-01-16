@@ -4,6 +4,7 @@ extern crate serde;
 use reqwest::StatusCode;
 use serde::{de, Deserialize};
 use thiserror::Error as ThisError;
+use tracing::instrument;
 use url::Url;
 
 pub mod models;
@@ -72,6 +73,7 @@ where
     Ok(response.json().await?)
 }
 
+#[instrument(level = "trace", skip_all, fields(url = %url))]
 async fn get_resource<T>(client: reqwest::Client, url: Url) -> Result<Single<T>>
 where
     for<'de> T: de::Deserialize<'de>,
@@ -79,6 +81,7 @@ where
     get_document::<Single<T>>(client, url).await
 }
 
+#[instrument(level = "trace", skip_all, fields(url = %url))]
 async fn get_resources<T>(client: reqwest::Client, url: Url) -> Result<Collection<T>>
 where
     for<'de> T: de::Deserialize<'de>,
@@ -99,7 +102,7 @@ pub mod anime {
     }
 
     pub async fn collection(client: reqwest::Client) -> Result<Collection<models::Anime>> {
-        let uri: Url = "https://kitsu.io/api/edge/anime/".parse()?;
+        let uri = Url::parse("https://kitsu.io/api/edge/anime/")?;
         let anime = get_resources::<models::Anime>(client, uri).await?;
         Ok(anime)
     }
