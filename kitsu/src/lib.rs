@@ -102,8 +102,7 @@ pub mod anime {
     }
 
     pub async fn collection(client: reqwest::Client) -> Result<Collection<models::Anime>> {
-        let params = [("filter[text]", "Jaku-Chara Tomozaki-kun S2")];
-        let uri = Url::parse_with_params("https://kitsu.io/api/edge/anime/", params)?;
+        let uri = Url::parse("https://kitsu.io/api/edge/anime/")?;
         let anime = get_resources::<models::Anime>(client, uri).await?;
         Ok(anime)
     }
