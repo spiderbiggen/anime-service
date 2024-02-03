@@ -1,7 +1,7 @@
-use anime_service::{jobs::poller, state::AppState};
 use anyhow::Result;
-use std::time::Duration;
 use tracing_subscriber::prelude::*;
+
+use anime_service::{jobs::poller, state::AppState};
 
 #[tokio::main]
 async fn main() -> Result<()> {
