@@ -73,17 +73,22 @@ impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
         tokio::task::spawn(async move {
             loop {
                 interval.tick().await;
-                let last_updated_at = *self.last_update.lock().unwrap();
-                let last_updated_at = match self.poll_nyaa(last_updated_at).await {
-                    Ok(update) => update,
-                    Err(err) => {
-                        error!("failed to refresh anime downloads: {err}");
-                        continue;
-                    }
-                };
-                *self.last_update.lock().unwrap() = last_updated_at;
+                self.tick().await;
             }
         })
+    }
+
+    #[instrument(skip(self))]
+    async fn tick(&self) {
+        let last_updated_at = *self.last_update.lock().unwrap();
+        let last_updated_at = match self.poll_nyaa(last_updated_at).await {
+            Ok(update) => update,
+            Err(err) => {
+                error!("failed to refresh anime downloads: {err}");
+                return;
+            }
+        };
+        *self.last_update.lock().unwrap() = last_updated_at;
     }
 
     #[instrument(skip(self))]
