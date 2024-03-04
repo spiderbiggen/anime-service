@@ -20,7 +20,7 @@ kitsu = { path = "kitsu" }
 nyaa = { path = "nyaa" }
 proto = { path = "proto" }
 
-ahash = "0.8.6"
+ahash = "0.8.11"
 anyhow = "1"
 async-stream = "0.3.5"
 axum = { version = "0.6" }
