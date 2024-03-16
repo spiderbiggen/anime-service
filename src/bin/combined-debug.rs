@@ -16,7 +16,8 @@ async fn main() -> Result<()> {
     let app_state = AppState::new()?;
     sqlx::migrate!().run(&app_state.pool).await?;
 
-    let last_updated_at = Utc::now() - Duration::hours(7 * 24);
+    let one_week = Duration::try_weeks(1).expect("1 week fits in a duration");
+    let last_updated_at = Utc::now() - one_week;
     let handler = PersistentPoller::new(&app_state);
     let poller =
         Poller::new_with_last_updated_at(app_state.client.clone(), handler, last_updated_at);

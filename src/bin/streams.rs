@@ -14,7 +14,8 @@ async fn main() -> Result<()> {
         .init();
 
     let (tx, _) = broadcast::channel(32);
-    let last_updated_at = Utc::now() - Duration::hours(7 * 24);
+    let one_week = Duration::try_weeks(1).expect("1 week fits in a duration");
+    let last_updated_at = Utc::now() - one_week;
     let handler = TransientPoller::new(tx.clone());
     let poller = Poller::new_with_last_updated_at(Default::default(), handler, last_updated_at);
     poller.start()?;
