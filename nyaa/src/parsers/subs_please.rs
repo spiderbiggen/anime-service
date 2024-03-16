@@ -4,7 +4,7 @@ use std::str::FromStr;
 use winnow::ascii::{alphanumeric1, digit1};
 use winnow::combinator::{alt, delimited, opt, permutation, preceded, rest, separated_pair};
 use winnow::error::{ErrMode, ErrorKind, InputError, ParserError};
-use winnow::token::{take_till, take_until0};
+use winnow::token::{take_till, take_until};
 use winnow::{PResult, Parser};
 
 use crate::parsers::{ParsedDownload, ParsedDownloadVariant, ParsedEpisode};
@@ -19,9 +19,9 @@ fn resolution<'s>(input: &mut &'s str) -> PResult<u16, InputError<&'s str>> {
 
 fn parse_resolution<'s>(input: &mut &'s str) -> PResult<u16, InputError<&'s str>> {
     let full_title = alt((
-        take_until0("(1080p)"),
-        take_until0("(720p)"),
-        take_until0("(480p)"),
+        take_until(0.., "(1080p)"),
+        take_until(0.., "(720p)"),
+        take_until(0.., "(480p)"),
     ))
     .parse_next(input)?;
     let resolution = resolution.parse_next(input)?;
