@@ -59,11 +59,10 @@ pub async fn serve_combined(app_state: AppState) -> Result<()> {
     let http_grpc = Steer::new(
         vec![axum_router, tonic_router],
         |req: &Request<Body>, _svcs: &[_]| {
-            if req.headers().get(CONTENT_TYPE).map(|v| v.as_bytes()) != Some(b"application/grpc") {
-                0
-            } else {
-                1
-            }
+            let header_map = req.headers();
+            let content_type = header_map.get(CONTENT_TYPE.as_str()).map(|v| v.as_bytes());
+            // 0 -> http, 1 -> grpc
+            usize::from(content_type == Some(b"application/grpc"))
         },
     );
     let binding = axum::Server::bind(ADDRESS).serve(Shared::new(http_grpc));
@@ -136,6 +135,6 @@ pub fn create_tonic_router(sender: Sender<models::DownloadGroup>) -> TonicRouter
 
     let service = Arc::new(DownloadService { sender });
     tonic::transport::Server::builder()
-        .add_service(V1DownloadsServer::from_arc(service.clone()))
+        .add_service(V1DownloadsServer::from_arc(Arc::clone(&service)))
         .add_service(V2DownloadsServer::from_arc(service))
 }

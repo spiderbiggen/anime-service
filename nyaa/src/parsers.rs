@@ -45,8 +45,8 @@ impl From<ParsedDownloadVariant<'_>> for DownloadVariant {
             ParsedDownloadVariant::Batch(batch) => Self::Batch(batch),
             ParsedDownloadVariant::Episode(ep) => Self::Episode(Episode {
                 episode: ep.number,
-                version: ep.version,
                 decimal: ep.decimal,
+                version: ep.version,
                 extra: ep.extra.map(|s| s.to_string()),
             }),
             ParsedDownloadVariant::Movie => Self::Movie,
