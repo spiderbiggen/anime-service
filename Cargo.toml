@@ -37,7 +37,7 @@ sqlx = { version = "0.7.4", features = ["postgres", "runtime-tokio-rustls", "chr
 thiserror = "1"
 tokio = { version = "1.37.0", features = ["full"] }
 tokio-stream = { version = "0.1.15", features = ["sync"] }
-tokio-util = "0.7.8"
+tokio-util = "0.7.11"
 tonic = { version = "0.11.0", features = ["gzip"] }
 tower = { version = "0.4", features = ["steer"] }
 tower-http = { version = "0.4", features = ["trace", "decompression-full", "compression-full"] }
