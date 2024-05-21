@@ -27,7 +27,7 @@ axum = { version = "0.6" }
 chrono = { version = "0.4", features = ["serde"] }
 envy = "0.4.2"
 futures = "0.3.29"
-itertools = "0.12"
+itertools = "0.13"
 percent-encoding = "2.2.0"
 prost-types = "0.12.4"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
