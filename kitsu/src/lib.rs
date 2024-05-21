@@ -53,14 +53,14 @@ pub struct Single<T> {
     pub data: T,
 }
 
-fn build_request(client: reqwest::Client, url: Url) -> reqwest::RequestBuilder {
+fn build_request(client: &reqwest::Client, url: Url) -> reqwest::RequestBuilder {
     client
         .get(url)
         .header(ACCEPT_HEADER, JSON_API_TYPE)
         .header(CONTENT_TYPE_HEADER, JSON_API_TYPE)
 }
 
-async fn get_document<T>(client: reqwest::Client, url: Url) -> Result<T>
+async fn get_document<T>(client: &reqwest::Client, url: Url) -> Result<T>
 where
     for<'de> T: de::Deserialize<'de>,
 {
@@ -74,7 +74,7 @@ where
 }
 
 #[instrument(level = "trace", skip_all, fields(url = %url))]
-async fn get_resource<T>(client: reqwest::Client, url: Url) -> Result<Single<T>>
+async fn get_resource<T>(client: &reqwest::Client, url: Url) -> Result<Single<T>>
 where
     for<'de> T: de::Deserialize<'de>,
 {
@@ -82,7 +82,7 @@ where
 }
 
 #[instrument(level = "trace", skip_all, fields(url = %url))]
-async fn get_resources<T>(client: reqwest::Client, url: Url) -> Result<Collection<T>>
+async fn get_resources<T>(client: &reqwest::Client, url: Url) -> Result<Collection<T>>
 where
     for<'de> T: de::Deserialize<'de>,
 {
@@ -94,14 +94,66 @@ pub mod anime {
     use crate::{Collection, Result, Single};
     use url::Url;
 
-    pub async fn single(client: reqwest::Client, id: u32) -> Result<Single<models::Anime>> {
+    /// Fetches a single anime resource from the Kitsu API by its ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - A reference to a `reqwest::Client` instance for making HTTP requests.
+    /// * `id` - The unique identifier of the anime resource to fetch.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if the request fails or the response cannot be parsed from JSON.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use reqwest::Client;
+    /// use kitsu_rs::anime;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client = Client::new();
+    ///     let anime_id = 1; // Replace with the desired anime ID
+    ///     match anime::single(&client, anime_id).await {
+    ///         Ok(anime) => println!("Fetched anime: {:?}", anime),
+    ///         Err(err) => eprintln!("Error fetching anime: {}", err),
+    ///     }
+    /// }
+    /// ```
+    pub async fn single(client: &reqwest::Client, id: u32) -> Result<Single<models::Anime>> {
         let url: Url = "https://kitsu.io/api/edge/anime/".parse()?;
         let url = url.join(&id.to_string())?;
         let anime = get_resource::<models::Anime>(client, url).await?;
         Ok(anime)
     }
 
-    pub async fn collection(client: reqwest::Client) -> Result<Collection<models::Anime>> {
+    /// Fetches a collection of anime resources from the Kitsu API.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - A reference to a `reqwest::Client` instance for making HTTP requests.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if the request fails or the response cannot be parsed from JSON.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use reqwest::Client;
+    /// use kitsu_rs::anime;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client = Client::new();
+    ///     match anime::collection(&client).await {
+    ///         Ok(animes) => println!("Fetched animes: {:?}", animes),
+    ///         Err(err) => eprintln!("Error fetching animes: {}", err),
+    ///     }
+    /// }
+    /// ```
+    pub async fn collection(client: &reqwest::Client) -> Result<Collection<models::Anime>> {
         let uri = Url::parse("https://kitsu.io/api/edge/anime/")?;
         let anime = get_resources::<models::Anime>(client, uri).await?;
         Ok(anime)

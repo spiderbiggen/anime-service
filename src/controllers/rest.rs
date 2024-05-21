@@ -34,7 +34,7 @@ pub(crate) mod anime {
         Path(id): Path<u32>,
         State(reqwest): State<ReqwestClient>,
     ) -> Result<Json<models::Show>, Error> {
-        let anime = kitsu::anime::single(reqwest, id).await?;
+        let anime = kitsu::anime::single(&reqwest, id).await?;
         let show = anime.data.try_into()?;
         Ok(Json(show))
     }
@@ -42,7 +42,7 @@ pub(crate) mod anime {
     pub(crate) async fn find(
         State(reqwest): State<ReqwestClient>,
     ) -> Result<Json<Vec<models::Show>>, Error> {
-        let anime = kitsu::anime::collection(reqwest).await?;
+        let anime = kitsu::anime::collection(&reqwest).await?;
         let show: Result<Vec<_>, _> = anime.data.into_iter().map(|d| d.try_into()).collect();
         Ok(Json(show?))
     }
