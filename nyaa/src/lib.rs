@@ -139,7 +139,7 @@ where
         result_map
             .entry((entry.title, entry.variant))
             .or_default()
-            .push(entry.download)
+            .push(entry.download);
     }
 
     result_map

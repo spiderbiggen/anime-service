@@ -47,7 +47,7 @@ impl From<ParsedDownloadVariant<'_>> for DownloadVariant {
                 episode: ep.number,
                 decimal: ep.decimal,
                 version: ep.version,
-                extra: ep.extra.map(|s| s.to_string()),
+                extra: ep.extra.map(ToString::to_string),
             }),
             ParsedDownloadVariant::Movie => Self::Movie,
         }
