@@ -23,13 +23,13 @@ proto = { path = "proto" }
 ahash = "0.8.11"
 anyhow = "1"
 async-stream = "0.3.5"
-axum = { version = "0.6" }
+axum = { version = "0.7.5" }
 chrono = { version = "0.4", features = ["serde"] }
 envy = "0.4.2"
 futures = "0.3.29"
 itertools = "0.13"
 percent-encoding = "2.2.0"
-prost-types = "0.12.6"
+prost-types = "0.13.1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
@@ -38,9 +38,9 @@ thiserror = "1"
 tokio = { version = "1.38.0", features = ["full"] }
 tokio-stream = { version = "0.1.15", features = ["sync"] }
 tokio-util = "0.7.11"
-tonic = { version = "0.11.0", features = ["gzip"] }
+tonic = { version = "0.12.0", features = ["gzip"] }
 tower = { version = "0.4", features = ["steer"] }
-tower-http = { version = "0.4", features = ["trace", "decompression-full", "compression-full"] }
+tower-http = { version = "0.5.2", features = ["trace", "decompression-full", "compression-full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = { version = "2", features = ["serde"] }
