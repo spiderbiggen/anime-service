@@ -8,10 +8,10 @@ use tracing::error;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("requested item was not found")]
+    NotFound,
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    Kitsu(#[from] kitsu::Error),
     #[error(transparent)]
     Nyaa(#[from] nyaa::Error),
     #[error(transparent)]
@@ -25,7 +25,6 @@ impl IntoResponse for Error {
         error!("request failed with {self}");
         let status = match self {
             Self::Nyaa(nyaa::Error::Status(code)) => code,
-            Self::Kitsu(kitsu::Error::Status(code)) => code,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
         let body = Json(json!({

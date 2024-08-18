@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "anime-service"
-version = "0.2.9"
+version = "0.3.0"
 dependencies = [
  "ahash",
  "anyhow",
@@ -71,7 +71,7 @@ dependencies = [
  "chrono",
  "envy",
  "futures",
- "kitsu",
+ "itertools 0.13.0",
  "nyaa",
  "prost-types",
  "proto",
@@ -1297,20 +1297,6 @@ checksum = "1cfaf33c695fc6e08064efbc1f72ec937429614f25eef83af942d0e227c3a28f"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "kitsu"
-version = "0.1.1"
-dependencies = [
- "ahash",
- "chrono",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.17",
- "tracing",
- "url",
 ]
 
 [[package]]
@@ -2589,6 +2575,10 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
+name = "tmdb"
+version = "0.1.0"
 
 [[package]]
 name = "tokio"

@@ -1,10 +1,10 @@
 [package]
 name = "anime-service"
-version = "0.2.9"
+version = "0.3.0"
 edition = "2021"
 
 [workspace]
-members = ["kitsu", "nyaa", "proto"]
+members = ["nyaa", "proto", "tmdb"]
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -16,7 +16,6 @@ pedantic = "warn"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-kitsu = { path = "kitsu" }
 nyaa = { path = "nyaa" }
 proto = { path = "proto" }
 

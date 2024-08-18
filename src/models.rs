@@ -1,25 +1,13 @@
-use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use url::Url;
 
-use kitsu::models as kitsu;
-
 #[derive(Serialize, Copy, Clone, Debug)]
 pub struct ImageDimension {
     pub width: u32,
     pub height: u32,
-}
-
-impl From<kitsu::ImageDimension> for ImageDimension {
-    fn from(value: kitsu::ImageDimension) -> Self {
-        Self {
-            width: value.width,
-            height: value.height,
-        }
-    }
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -41,57 +29,11 @@ pub struct Images {
     pub tiny: Option<ImageDefinition>,
 }
 
-impl From<kitsu::Images> for Images {
-    fn from(value: kitsu::Images) -> Self {
-        Self {
-            original: value.original,
-            large: value
-                .large
-                .zip(value.meta.dimensions.large)
-                .map(|(u, i)| ImageDefinition {
-                    url: u,
-                    dimensions: i.into(),
-                }),
-            medium: value
-                .medium
-                .zip(value.meta.dimensions.medium)
-                .map(|(u, i)| ImageDefinition {
-                    url: u,
-                    dimensions: i.into(),
-                }),
-            small: value
-                .small
-                .zip(value.meta.dimensions.small)
-                .map(|(u, i)| ImageDefinition {
-                    url: u,
-                    dimensions: i.into(),
-                }),
-            tiny: value
-                .tiny
-                .zip(value.meta.dimensions.tiny)
-                .map(|(u, i)| ImageDefinition {
-                    url: u,
-                    dimensions: i.into(),
-                }),
-        }
-    }
-}
-
 #[derive(Serialize, Clone, Debug)]
 pub struct Titles {
     pub en: Option<String>,
     pub en_jp: String,
     pub ja_jp: String,
-}
-
-impl From<kitsu::Titles> for Titles {
-    fn from(value: kitsu::Titles) -> Self {
-        Self {
-            en: value.en,
-            en_jp: value.en_jp,
-            ja_jp: value.ja_jp,
-        }
-    }
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -115,33 +57,6 @@ pub struct Show {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub youtube_video_id: Option<String>,
     pub nsfw: bool,
-}
-
-impl TryFrom<kitsu::Anime> for Show {
-    type Error = ParseIntError;
-
-    fn try_from(value: kitsu::Anime) -> Result<Self, Self::Error> {
-        let id = value.id.parse()?;
-
-        Ok(Self {
-            id,
-            created_at: value.attributes.created_at,
-            updated_at: value.attributes.updated_at,
-            slug: value.attributes.slug,
-            synopsis: value.attributes.synopsis,
-            description: value.attributes.description,
-            canonical_title: value.attributes.canonical_title,
-            start_date: value.attributes.start_date,
-            end_date: value.attributes.end_date,
-            poster_image: value.attributes.poster_image.into(),
-            cover_image: value.attributes.cover_image.map(|c| c.into()),
-            episode_count: value.attributes.episode_count,
-            episode_length: value.attributes.episode_length,
-            total_length: value.attributes.total_length,
-            youtube_video_id: value.attributes.youtube_video_id,
-            nsfw: value.attributes.nsfw,
-        })
-    }
 }
 
 #[derive(Debug, Clone, Serialize)]
