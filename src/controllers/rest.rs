@@ -24,25 +24,36 @@ async fn find_downloads(
 }
 
 pub(crate) mod anime {
+    use crate::controllers::rest::DownloadQuery;
     use crate::errors::Error;
-    use crate::models;
     use crate::state::ReqwestClient;
-    use axum::extract::{Path, State};
+    use axum::extract::{Path, Query, State};
     use axum::Json;
+    use std::env::var;
+    use tmdb::Authorization;
 
     pub(crate) async fn by_id(
-        Path(_id): Path<u32>,
-        State(_reqwest): State<ReqwestClient>,
-    ) -> Result<Json<models::Show>, Error> {
-        // TODO: Implement actual data fetching
-        Err(Error::NotFound)
+        Path(id): Path<u32>,
+        State(reqwest): State<ReqwestClient>,
+    ) -> Result<Json<tmdb::tv::Details>, Error> {
+        let auth_token = var("TMDB_ACCESS_TOKEN").unwrap();
+        let client = tmdb::Client::new(Authorization::Bearer(&auth_token), reqwest);
+        let result = tmdb::tv::details(&client, id, None).await.unwrap();
+        Ok(Json(result))
     }
 
     pub(crate) async fn find(
-        State(_reqwest): State<ReqwestClient>,
-    ) -> Result<Json<Vec<models::Show>>, Error> {
-        // TODO: Implement actual data fetching
-        Err(Error::NotFound)
+        State(reqwest): State<ReqwestClient>,
+        Query(query): Query<DownloadQuery>,
+    ) -> Result<Json<tmdb::Paging<tmdb::search::SearchResult>>, Error> {
+        let Some(title) = query.title else {
+            // Bad request
+            return Err(Error::NotFound);
+        };
+        let auth_token = var("TMDB_ACCESS_TOKEN").unwrap();
+        let client = tmdb::Client::new(Authorization::Bearer(&auth_token), reqwest);
+        let result = tmdb::search::tv(&client, title, None).await.unwrap();
+        Ok(Json(result))
     }
 }
 
