@@ -80,6 +80,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "thiserror 2.0.17",
+ "tmdb",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -2579,6 +2580,16 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tmdb"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "thiserror",
+ "tracing",
+ "url",
+]
 
 [[package]]
 name = "tokio"
