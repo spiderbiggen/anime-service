@@ -134,8 +134,9 @@ pub fn create_tonic_router(sender: Sender<models::DownloadGroup>) -> Router {
     use proto::api::v2::downloads_server::DownloadsServer as V2DownloadsServer;
 
     let service = Arc::new(DownloadService { sender });
-    tonic::transport::Server::builder()
+    let mut builder = tonic::service::Routes::builder();
+    builder
         .add_service(V1DownloadsServer::from_arc(Arc::clone(&service)))
-        .add_service(V2DownloadsServer::from_arc(service))
-        .into_router()
+        .add_service(V2DownloadsServer::from_arc(service));
+    builder.routes().into_axum_router()
 }
