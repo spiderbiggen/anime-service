@@ -3,14 +3,14 @@ use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 use std::{borrow::Borrow, collections::HashMap};
 
+use crate::parsers::ParsedDownload;
 use ahash::RandomState;
 use chrono::{DateTime, Utc};
 use reqwest::StatusCode;
 use rss::{Channel, Item};
 use tracing::instrument;
 use url::Url;
-
-use crate::parsers::ParsedDownload;
+use url_macro::url;
 
 mod parsers;
 
@@ -77,7 +77,7 @@ pub async fn groups(
     client: &reqwest::Client,
     title: Option<&str>,
 ) -> Result<impl Iterator<Item = AnimeDownloads>, Error> {
-    let url = build_url(title)?;
+    let url = build_url(title);
     let val = get_feed(client, url).await?;
     let entries = val.items.into_iter().filter_map(|i| map_item(i).ok());
     Ok(map_groups(entries))
@@ -100,14 +100,20 @@ async fn get_feed(client: &reqwest::Client, url: Url) -> Result<Channel, Error> 
     Ok(Channel::read_from(body.borrow())?)
 }
 
-fn build_url(title: Option<&str>) -> Result<Url, Error> {
+#[must_use]
+fn build_url(title: Option<&str>) -> Url {
+    let mut url = url!("https://nyaa.si/");
     let mut query: String = String::from("[SubsPlease]");
     if let Some(title) = title {
         query.push(' ');
         query.push_str(title.as_ref());
     }
-    let params = [("page", "rss"), ("q", &query), ("c", "1_2"), ("f", "2")];
-    Ok(Url::parse_with_params("https://nyaa.si/", params)?)
+    url.query_pairs_mut()
+        .append_pair("page", "rss")
+        .append_pair("q", &query)
+        .append_pair("c", "1_2")
+        .append_pair("f", "2");
+    url
 }
 
 #[instrument(err)]

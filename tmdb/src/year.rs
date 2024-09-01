@@ -3,13 +3,13 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::num::NonZeroU16;
 
-#[derive(fmt::Debug, Clone, Copy, Serialize)]
 /// Years can only be in the range 1000..9999
+#[derive(fmt::Debug, Clone, Copy, Serialize)]
 pub struct Year(NonZeroU16);
 
 impl Year {
-    #[must_use]
     #[inline]
+    #[must_use]
     pub const fn new(year: u16) -> Option<Self> {
         if year > 1000 && year <= 9999 {
             // SAFETY: year is greater than 1000 which is always greater than 0
@@ -19,8 +19,8 @@ impl Year {
         }
     }
 
-    #[must_use]
     #[inline]
+    #[must_use]
     pub const fn from_nonzero_u16(value: NonZeroU16) -> Option<Self> {
         if value.get() > 1000 && value.get() <= 9999 {
             Some(Year(value))

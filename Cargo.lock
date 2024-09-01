@@ -71,7 +71,6 @@ dependencies = [
  "chrono",
  "envy",
  "futures",
- "itertools 0.13.0",
  "nyaa",
  "prost-types",
  "proto",
@@ -1497,6 +1496,7 @@ dependencies = [
  "thiserror 2.0.17",
  "tracing",
  "url",
+ "url-macro",
  "winnow",
 ]
 
@@ -2586,9 +2586,10 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.68",
  "tracing",
  "url",
+ "url-macro",
 ]
 
 [[package]]
@@ -2896,6 +2897,15 @@ dependencies = [
  "idna",
  "percent-encoding",
  "serde",
+]
+
+[[package]]
+name = "url-macro"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7dcea4a00cc1ce0820eb8e86bd741d7f81d5f0cb694b9c20d3a4e911c72a6953"
+dependencies = [
+ "url",
 ]
 
 [[package]]
