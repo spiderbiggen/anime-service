@@ -83,7 +83,9 @@ pub mod search {
     use crate::year::Year;
     use crate::{Client, Error, Paging};
     use serde::{Deserialize, Serialize};
+    use tracing::instrument;
     use url::Url;
+    use url_macro::url;
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct SearchResult {
@@ -139,6 +141,7 @@ pub mod search {
     /// # Errors
     /// [`Error::Unauthorized`]: If the client is not authorized to make the request.
     /// [`Error::NotFound`]: If the resource requested does not exist.
+    #[instrument(skip_all)]
     pub async fn tv<S>(
         client: &Client<'_>,
         query: S,
@@ -147,7 +150,7 @@ pub mod search {
     where
         S: AsRef<str>,
     {
-        let mut url: Url = "https://api.themoviedb.org/3/search/tv".parse()?;
+        let mut url: Url = url!("https://api.themoviedb.org/3/search/tv");
         url.query_pairs_mut().append_pair("query", query.as_ref());
         if let Some(params) = params {
             params.append_query_params(&mut url);
@@ -168,7 +171,9 @@ pub mod tv {
     use chrono::NaiveDate;
     use serde::{Deserialize, Serialize};
     use smallvec::SmallVec;
+    use tracing::instrument;
     use url::Url;
+    use url_macro::url;
 
     #[derive(Serialize, Deserialize)]
     pub struct Author {
@@ -320,12 +325,13 @@ pub mod tv {
     /// [`Error::Unauthorized`]: If the client is not authorized to make the request.
     /// [`Error::NotFound`]: If the resource requested does not exist.
     /// [`Error::DeserializationError`]: If resource does not match the expected format.
+    #[instrument(skip_all)]
     pub async fn details(
         client: &Client<'_>,
         id: u32,
         params: Option<Params>,
     ) -> Result<Details, Error> {
-        let url: Url = "https://api.themoviedb.org/3/tv/".parse()?;
+        let url: Url = url!("https://api.themoviedb.org/3/tv/");
         let mut url = url.join(&id.to_string()).expect("this should never fail");
         if let Some(params) = params {
             params.append_query_params(&mut url);

@@ -12,6 +12,7 @@ smallvec = { version = "1.13.2", features = ["serde"] }
 thiserror = "1"
 tracing = "0.1"
 url = { version = "2", features = ["serde"] }
+url-macro = "0.1.8"
 
 [lints]
 workspace = true
