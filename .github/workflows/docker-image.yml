@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4.1.7
 
       - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@ed2356ad628626a6b3f5be6c3e0255c0454fcdb9
         with:
           toolchain: stable
           target: ${{ matrix.info.target }}
@@ -133,7 +133,7 @@ jobs:
     steps:
       - name: Get Deployment API Token
         id: token
-        uses: fjogeleit/http-request-action@main
+        uses: fjogeleit/http-request-action@04043b9aef8c230c41c07205eb8a7b23e9d0858b
         with:
           url: ${{secrets.DEPLOY_AUTH_URL}}
           method: 'POST'
@@ -151,7 +151,7 @@ jobs:
 
       - name: Update
         id: refresh
-        uses: fjogeleit/http-request-action@main
+        uses: fjogeleit/http-request-action@04043b9aef8c230c41c07205eb8a7b23e9d0858b
         with:
           url: "${{secrets.DEPLOY_URL}}?image=${{needs.publish.outputs.tag}}"
           method: 'PATCH'
