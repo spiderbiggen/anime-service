@@ -133,7 +133,7 @@ jobs:
     steps:
       - name: Get Deployment API Token
         id: token
-        uses: fjogeleit/http-request-action@c54053fb4a2d8b8d1046b15b5601a526cfe0ae0f
+        uses: fjogeleit/http-request-action@bf78da14118941f7e940279dd58f67e863cbeff6
         with:
           url: ${{secrets.DEPLOY_AUTH_URL}}
           method: 'POST'
@@ -151,7 +151,7 @@ jobs:
 
       - name: Update
         id: refresh
-        uses: fjogeleit/http-request-action@c54053fb4a2d8b8d1046b15b5601a526cfe0ae0f
+        uses: fjogeleit/http-request-action@bf78da14118941f7e940279dd58f67e863cbeff6
         with:
           url: "${{secrets.DEPLOY_URL}}?image=${{needs.publish.outputs.tag}}"
           method: 'PATCH'
