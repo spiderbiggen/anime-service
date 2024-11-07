@@ -13,7 +13,7 @@ ahash = "0.8.11"
 chrono = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "brotli"] }
 rss = "2"
-thiserror = "1"
+thiserror = "2"
 tracing = "0.1"
 url = "2"
 winnow = "0.6.18"
