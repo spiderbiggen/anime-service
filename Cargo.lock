@@ -77,7 +77,7 @@ dependencies = [
 
 [[package]]
 name = "anime-service"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "ahash",
  "anyhow",
@@ -86,10 +86,8 @@ dependencies = [
  "chrono",
  "envy",
  "futures",
- "itertools 0.13.0",
  "kitsu",
  "nyaa",
- "percent-encoding",
  "prost-types",
  "proto",
  "reqwest",
@@ -99,7 +97,6 @@ dependencies = [
  "thiserror 2.0.3",
  "tokio",
  "tokio-stream",
- "tokio-util",
  "tonic",
  "tower 0.5.1",
  "tower-http",
