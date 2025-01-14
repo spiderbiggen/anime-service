@@ -94,7 +94,7 @@ pub fn v1_routes() -> Router<AppState> {
             "/shows",
             AxumRouter::new()
                 .route("/", get(anime::find))
-                .route("/:id", get(anime::by_id)),
+                .route("/{id}", get(anime::by_id)),
         )
         .nest(
             "/downloads",
