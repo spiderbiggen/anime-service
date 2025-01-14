@@ -1,9 +1,9 @@
 use std::default::Default;
+use std::future::Future;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::anyhow;
-use axum::async_trait;
 use chrono::{DateTime, Utc};
 use tokio::sync::broadcast::Sender;
 use tokio::task::JoinHandle;
@@ -18,9 +18,11 @@ use crate::state::{AppState, DBPool, ReqwestClient};
 
 const DEFAULT_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
-#[async_trait]
 pub trait NewDownloadsHandler: Sized + Send + Sync {
-    async fn handle_new_downloads(&self, groups: Vec<DownloadGroup>) -> anyhow::Result<()>;
+    fn handle_new_downloads(
+        &self,
+        groups: Vec<DownloadGroup>,
+    ) -> impl Future<Output = anyhow::Result<()>> + Send;
 }
 
 pub struct Poller<Handler: NewDownloadsHandler> {
@@ -142,7 +144,6 @@ impl TransientPoller {
     }
 }
 
-#[async_trait]
 impl NewDownloadsHandler for TransientPoller {
     async fn handle_new_downloads(&self, groups: Vec<DownloadGroup>) -> anyhow::Result<()> {
         for group in groups {
@@ -172,7 +173,6 @@ impl PersistentPoller {
     }
 }
 
-#[async_trait]
 impl NewDownloadsHandler for PersistentPoller {
     async fn handle_new_downloads(&self, groups: Vec<DownloadGroup>) -> anyhow::Result<()> {
         self.save_downloads(&groups).await?;
