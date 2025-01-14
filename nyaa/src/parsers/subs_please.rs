@@ -2,9 +2,9 @@ use std::ops::RangeInclusive;
 use std::str::FromStr;
 
 use winnow::ascii::{alphanumeric1, digit1};
-use winnow::combinator::{alt, delimited, opt, permutation, preceded, rest, separated_pair};
+use winnow::combinator::{alt, delimited, opt, permutation, preceded, separated_pair};
 use winnow::error::{ErrMode, ErrorKind, InputError, ParserError};
-use winnow::token::{take_till, take_until};
+use winnow::token::{rest, take_till, take_until};
 use winnow::{PResult, Parser};
 
 use crate::parsers::{ParsedDownload, ParsedDownloadVariant, ParsedEpisode};
