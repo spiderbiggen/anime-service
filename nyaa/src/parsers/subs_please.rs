@@ -3,21 +3,21 @@ use std::str::FromStr;
 
 use winnow::ascii::{alphanumeric1, digit1};
 use winnow::combinator::{alt, delimited, opt, permutation, preceded, separated_pair};
-use winnow::error::{ErrMode, ErrorKind, InputError, ParserError};
+use winnow::error::{ContextError, ParserError};
 use winnow::token::{rest, take_till, take_until};
-use winnow::{PResult, Parser};
+use winnow::{Parser, Result};
 
 use crate::parsers::{ParsedDownload, ParsedDownloadVariant, ParsedEpisode};
 
-fn parse_digits<'s, N: FromStr>(input: &mut &'s str) -> PResult<N, InputError<&'s str>> {
+fn parse_digits<N: FromStr>(input: &mut &str) -> Result<N> {
     digit1.parse_to().parse_next(input)
 }
 
-fn resolution<'s>(input: &mut &'s str) -> PResult<u16, InputError<&'s str>> {
+fn resolution(input: &mut &str) -> Result<u16> {
     delimited('(', parse_digits, "p)").parse_next(input)
 }
 
-fn parse_resolution<'s>(input: &mut &'s str) -> PResult<u16, InputError<&'s str>> {
+fn parse_resolution(input: &mut &str) -> Result<u16> {
     let full_title = alt((
         take_until(0.., "(1080p)"),
         take_until(0.., "(720p)"),
@@ -29,9 +29,7 @@ fn parse_resolution<'s>(input: &mut &'s str) -> PResult<u16, InputError<&'s str>
     Ok(resolution)
 }
 
-fn parse_episode_identifier<'s>(
-    input: &mut &'s str,
-) -> PResult<Option<ParsedEpisode<'s>>, InputError<&'s str>> {
+fn parse_episode_identifier<'s>(input: &mut &'s str) -> Result<Option<ParsedEpisode<'s>>> {
     let Some(number) = opt(parse_digits).parse_next(input)? else {
         return Ok(None);
     };
@@ -49,18 +47,15 @@ fn parse_episode_identifier<'s>(
     }))
 }
 
-fn batch_range<'s>(input: &mut &'s str) -> PResult<RangeInclusive<u32>, InputError<&'s str>> {
+fn batch_range(input: &mut &str) -> Result<RangeInclusive<u32>> {
     delimited('(', separated_pair(parse_digits, '-', parse_digits), ")")
         .map(|(left, right)| left..=right)
         .parse_next(input)
 }
 
-fn parse_batch_range<'s>(input: &mut &'s str) -> PResult<RangeInclusive<u32>, InputError<&'s str>> {
+fn parse_batch_range(input: &mut &str) -> Result<RangeInclusive<u32>> {
     let Some(index) = input.rfind('(') else {
-        return Err(ErrMode::Backtrack(InputError::from_error_kind(
-            input,
-            ErrorKind::Assert,
-        )));
+        return Err(ContextError::assert(input, "missing batch range"));
     };
     let mut range = &input[index..];
     let batch_range = batch_range.parse_next(&mut range)?;
@@ -68,11 +63,11 @@ fn parse_batch_range<'s>(input: &mut &'s str) -> PResult<RangeInclusive<u32>, In
     Ok(batch_range)
 }
 
-fn square_brackets<'s>(input: &mut &'s str) -> PResult<&'s str, InputError<&'s str>> {
+fn square_brackets<'s>(input: &mut &'s str) -> Result<&'s str> {
     delimited('[', take_till(0.., |c| c == ']'), ']').parse_next(input)
 }
 
-fn parse_file_end<'s>(input: &mut &'s str) -> PResult<&'s str, InputError<&'s str>> {
+fn parse_file_end<'s>(input: &mut &'s str) -> Result<&'s str> {
     let tag = square_brackets.parse_next(input)?;
     rest.verify(|rest: &str| rest.is_empty() || rest == ".mkv")
         .parse_next(input)?;
@@ -80,7 +75,7 @@ fn parse_file_end<'s>(input: &mut &'s str) -> PResult<&'s str, InputError<&'s st
 }
 
 // TODO cleanup
-pub(crate) fn parse_filename(value: &str) -> PResult<ParsedDownload, InputError<&str>> {
+pub(crate) fn parse_filename(value: &str) -> Result<ParsedDownload> {
     let mut value_ref = value;
     let source = square_brackets.parse_next(&mut value_ref)?;
     let full_title = take_till(0.., |c| c == '[').parse_next(&mut value_ref)?;
