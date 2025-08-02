@@ -1,4 +1,4 @@
-use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -29,7 +29,7 @@ pub mod jobs;
 pub mod models;
 pub mod state;
 
-static SOCKET: &SocketAddr = &SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 8000);
+static SOCKET: &SocketAddr = &SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8000);
 
 pub async fn serve_axum(app_state: AppState) -> Result<()> {
     let router = create_axum_router(app_state);
