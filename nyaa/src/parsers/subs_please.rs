@@ -75,7 +75,7 @@ fn parse_file_end<'s>(input: &mut &'s str) -> Result<&'s str> {
 }
 
 // TODO cleanup
-pub(crate) fn parse_filename(value: &str) -> Result<ParsedDownload> {
+pub(crate) fn parse_filename(value: &str) -> Result<ParsedDownload<'_>> {
     let mut value_ref = value;
     let source = square_brackets.parse_next(&mut value_ref)?;
     let full_title = take_till(0.., |c| c == '[').parse_next(&mut value_ref)?;
