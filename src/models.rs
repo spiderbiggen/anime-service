@@ -178,26 +178,6 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
     }
 }
 
-impl From<DownloadGroup> for Option<proto::api::v1::DownloadCollection> {
-    fn from(val: DownloadGroup) -> Self {
-        let DownloadVariant::Episode(episode) = val.variant else {
-            return None;
-        };
-        Some(proto::api::v1::DownloadCollection {
-            episode: Some(proto::api::v1::Episode {
-                created_at: Some(prost_timestamp(val.created_at)),
-                updated_at: Some(prost_timestamp(val.updated_at)),
-                title: val.title,
-                number: episode.episode,
-                decimal: episode.decimal.unwrap_or_default(),
-                version: episode.version.unwrap_or_default(),
-                extra: episode.extra.unwrap_or_default(),
-            }),
-            downloads: val.downloads.into_iter().map(|d| d.into()).collect(),
-        })
-    }
-}
-
 impl From<DownloadGroup> for proto::api::v2::DownloadCollection {
     fn from(val: DownloadGroup) -> Self {
         proto::api::v2::DownloadCollection {
@@ -297,18 +277,6 @@ impl From<nyaa::Download> for Download {
             torrent: a.torrent,
             file_name: a.file_name,
             published_date: a.pub_date,
-        }
-    }
-}
-
-impl From<Download> for proto::api::v1::Download {
-    fn from(val: Download) -> Self {
-        Self {
-            published_date: Some(prost_timestamp(val.published_date)),
-            resolution: format!("{}p", val.resolution),
-            comments: val.comments,
-            torrent: val.torrent,
-            file_name: val.file_name,
         }
     }
 }

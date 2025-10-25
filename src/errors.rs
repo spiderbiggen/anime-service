@@ -24,13 +24,8 @@ impl IntoResponse for Error {
     fn into_response(self) -> Response {
         error!("request failed with {self}");
         let status = match self {
-            // TODO remove unnecessary conversion between status codes once tonic upgrades to hyper 1.0
-            Self::Nyaa(nyaa::Error::Status(code)) => {
-                StatusCode::from_u16(code.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-            Self::Kitsu(kitsu::Error::Status(code)) => {
-                StatusCode::from_u16(code.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
-            }
+            Self::Nyaa(nyaa::Error::Status(code)) => code,
+            Self::Kitsu(kitsu::Error::Status(code)) => code,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
         let body = Json(json!({

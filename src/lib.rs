@@ -130,13 +130,10 @@ pub fn v1_routes() -> Router<AppState> {
 
 pub fn create_tonic_router(sender: Sender<models::DownloadGroup>) -> Router {
     use controllers::grpc::DownloadService;
-    use proto::api::v1::downloads_server::DownloadsServer as V1DownloadsServer;
     use proto::api::v2::downloads_server::DownloadsServer as V2DownloadsServer;
 
     let service = Arc::new(DownloadService { sender });
     let mut builder = tonic::service::Routes::builder();
-    builder
-        .add_service(V1DownloadsServer::from_arc(Arc::clone(&service)))
-        .add_service(V2DownloadsServer::from_arc(service));
+    builder.add_service(V2DownloadsServer::from_arc(service));
     builder.routes().into_axum_router()
 }
