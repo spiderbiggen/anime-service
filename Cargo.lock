@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "anime-service"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "ahash",
  "anyhow",
@@ -1713,7 +1713,7 @@ dependencies = [
 
 [[package]]
 name = "proto"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "prost",
  "prost-types",
