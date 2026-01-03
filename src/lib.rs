@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use axum::body::Body;
-use axum::http::Request;
+use axum::http::{HeaderValue, Request};
 use axum::{routing::get, Router as AxumRouter, Router};
 use reqwest::header::CONTENT_TYPE;
 use tokio::net::TcpListener;
@@ -57,7 +57,7 @@ pub async fn serve_combined(app_state: AppState) -> Result<()> {
             let is_grpc = req
                 .headers()
                 .get(CONTENT_TYPE)
-                .map(|content_type| content_type.as_bytes())
+                .map(HeaderValue::as_bytes)
                 .filter(|content_type| content_type.starts_with(b"application/grpc"))
                 .is_some();
             // 0 -> http, 1 -> grpc

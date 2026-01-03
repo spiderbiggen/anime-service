@@ -41,7 +41,7 @@ where
     )
     .fetch_optional(executor)
     .await?
-    .map(|record| record.into());
+    .map(Into::into);
     Ok(record)
 }
 

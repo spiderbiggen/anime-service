@@ -46,7 +46,7 @@ impl Poller<PersistentPoller> {
 
 impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
     pub fn new(client: ReqwestClient, handler: Handler) -> Self {
-        Self::new_with_last_updated_at(client, handler, Default::default())
+        Self::new_with_last_updated_at(client, handler, DateTime::default())
     }
 
     pub fn new_with_last_updated_at(
@@ -118,7 +118,7 @@ async fn get_groups(
 ) -> anyhow::Result<impl Iterator<Item = DownloadGroup>> {
     let groups_future = nyaa::groups(client, None);
     let groups = timeout(Duration::from_secs(10), groups_future).await??;
-    let result = groups.into_iter().map(|e| e.into());
+    let result = groups.into_iter().map(Into::into);
     Ok(result)
 }
 
@@ -126,7 +126,8 @@ fn interval_at_next_period(period: Duration) -> anyhow::Result<Interval> {
     let start = Instant::now();
     let now: DateTime<Utc> = Utc::now();
     let seconds = now.timestamp();
-    let remaining_seconds = period.as_secs() as i64 - (seconds % period.as_secs() as i64);
+    let remaining_seconds =
+        period.as_secs().cast_signed() - (seconds % period.as_secs().cast_signed());
     let minute = DateTime::from_timestamp(seconds + remaining_seconds, 0)
         .ok_or(anyhow!("failed to create new date time"))?;
     let offset = (minute - now).to_std()?;
@@ -139,6 +140,7 @@ pub struct TransientPoller {
 }
 
 impl TransientPoller {
+    #[must_use]
     pub fn new(sender: Sender<DownloadGroup>) -> Self {
         Self { sender }
     }
@@ -160,6 +162,7 @@ pub struct PersistentPoller {
 }
 
 impl PersistentPoller {
+    #[must_use]
     pub fn new(state: &AppState) -> Self {
         Self {
             database: state.pool.clone(),

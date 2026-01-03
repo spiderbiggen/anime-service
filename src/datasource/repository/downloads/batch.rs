@@ -42,12 +42,12 @@ where
         "queries/batch/query_batch_download_by_unique.sql",
         PROVIDER_DEFAULT,
         title,
-        *range.start() as i32,
-        *range.end() as i32,
+        range.start().cast_signed(),
+        range.end().cast_signed(),
     )
     .fetch_optional(executor)
     .await?
-    .map(|record| record.into());
+    .map(Into::into);
     Ok(record)
 }
 
@@ -65,8 +65,8 @@ where
         "queries/batch/insert_batch_download.sql",
         PROVIDER_DEFAULT,
         title,
-        *range.start() as i32,
-        *range.end() as i32,
+        range.start().cast_signed(),
+        range.end().cast_signed(),
         created_at,
         updated_at,
     )

@@ -201,11 +201,11 @@ where
             id: record.id,
             _provider: record.provider,
             title: record.title,
-            episode: record.episode.map(|v| v as u32),
-            decimal: record.decimal.map(|v| v as u32),
-            version: record.version.map(|v| v as u32),
-            start_index: record.start_index.map(|v| v as u32),
-            end_index: record.end_index.map(|v| v as u32),
+            episode: record.episode.map(i32::cast_unsigned),
+            decimal: record.decimal.map(i32::cast_unsigned),
+            version: record.version.map(i32::cast_unsigned),
+            start_index: record.start_index.map(i32::cast_unsigned),
+            end_index: record.end_index.map(i32::cast_unsigned),
             extra: record.extra,
             variant: record.variant,
             created_at: record.created_at,
@@ -236,7 +236,7 @@ impl From<RawSingleDownloadResult> for SingleDownloadResult {
                 .resolutions
                 .into_iter()
                 .flatten()
-                .map(|res| res as u16)
+                .map(i16::cast_unsigned)
                 .collect(),
         }
     }

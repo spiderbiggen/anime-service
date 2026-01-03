@@ -24,8 +24,7 @@ impl IntoResponse for Error {
     fn into_response(self) -> Response {
         error!("request failed with {self}");
         let status = match self {
-            Self::Nyaa(nyaa::Error::Status(code)) => code,
-            Self::Kitsu(kitsu::Error::Status(code)) => code,
+            Self::Nyaa(nyaa::Error::Status(code)) | Self::Kitsu(kitsu::Error::Status(code)) => code,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
         let body = Json(json!({

@@ -43,7 +43,7 @@ pub(crate) mod anime {
         State(reqwest): State<ReqwestClient>,
     ) -> Result<Json<Vec<models::Show>>, Error> {
         let anime = kitsu::anime::collection(&reqwest).await?;
-        let show: Result<Vec<_>, _> = anime.data.into_iter().map(|d| d.try_into()).collect();
+        let show: Result<Vec<_>, _> = anime.data.into_iter().map(TryInto::try_into).collect();
         Ok(Json(show?))
     }
 }

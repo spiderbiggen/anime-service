@@ -43,14 +43,14 @@ where
         "queries/episode/query_episode_download_by_unique.sql",
         PROVIDER_DEFAULT,
         title,
-        episode.episode as i32,
-        episode.decimal.map(|e| e as i32),
-        episode.version.map(|e| e as i32),
+        episode.episode.cast_signed(),
+        episode.decimal.map(u32::cast_signed),
+        episode.version.map(u32::cast_signed),
         episode.extra,
     )
     .fetch_optional(executor)
     .await?
-    .map(|record| record.into());
+    .map(Into::into);
     Ok(result)
 }
 
@@ -65,9 +65,9 @@ async fn insert_episode(
         "queries/episode/insert_episode_download.sql",
         PROVIDER_DEFAULT,
         title,
-        episode.episode as i32,
-        episode.decimal.map(|e| e as i32),
-        episode.version.map(|e| e as i32),
+        episode.episode.cast_signed(),
+        episode.decimal.map(u32::cast_signed),
+        episode.version.map(u32::cast_signed),
         episode.extra,
         created_at,
         updated_at,

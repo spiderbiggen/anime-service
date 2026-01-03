@@ -134,7 +134,7 @@ impl TryFrom<kitsu::Anime> for Show {
             start_date: value.attributes.start_date,
             end_date: value.attributes.end_date,
             poster_image: value.attributes.poster_image.into(),
-            cover_image: value.attributes.cover_image.map(|c| c.into()),
+            cover_image: value.attributes.cover_image.map(Into::into),
             episode_count: value.attributes.episode_count,
             episode_length: value.attributes.episode_length,
             total_length: value.attributes.total_length,
@@ -173,7 +173,7 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
             variant: value.variant.into(),
             created_at,
             updated_at,
-            downloads: value.downloads.into_iter().map(|it| it.into()).collect(),
+            downloads: value.downloads.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -185,7 +185,7 @@ impl From<DownloadGroup> for proto::api::v2::DownloadCollection {
             updated_at: Some(prost_timestamp(value.updated_at)),
             title: value.title,
             variant: Some(value.variant.into()),
-            downloads: value.downloads.into_iter().map(|d| d.into()).collect(),
+            downloads: value.downloads.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -285,7 +285,7 @@ impl From<Download> for proto::api::v2::Download {
     fn from(value: Download) -> Self {
         Self {
             published_date: Some(prost_timestamp(value.published_date)),
-            resolution: value.resolution as u32,
+            resolution: u32::from(value.resolution),
             comments: value.comments,
             torrent: value.torrent,
             file_name: value.file_name,
@@ -296,6 +296,6 @@ impl From<Download> for proto::api::v2::Download {
 fn prost_timestamp(date_time: DateTime<Utc>) -> prost_types::Timestamp {
     prost_types::Timestamp {
         seconds: date_time.timestamp(),
-        nanos: date_time.timestamp_subsec_nanos() as i32,
+        nanos: date_time.timestamp_subsec_nanos().cast_signed(),
     }
 }

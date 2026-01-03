@@ -31,7 +31,7 @@ pub(super) mod models {
         fn from(value: DownloadEntity) -> Self {
             Self {
                 comments: value.comments,
-                resolution: value.resolution as u16,
+                resolution: value.resolution.cast_unsigned(),
                 torrent: value.torrent,
                 file_name: value.file_name,
                 published_date: value.created_at,
@@ -47,7 +47,7 @@ where
     sqlx::query_file!(
         "queries/insert_download_resolution.sql",
         id,
-        download.resolution as i16,
+        download.resolution.cast_signed(),
         download.torrent,
         &download.file_name,
         download.comments,
@@ -76,7 +76,7 @@ where
     while let Some(row) = stream.next().await {
         let download_entity = row?;
         let id = download_entity.download_id;
-        episodes.entry(id).or_default().push(download_entity.into())
+        episodes.entry(id).or_default().push(download_entity.into());
     }
     Ok(episodes)
 }
