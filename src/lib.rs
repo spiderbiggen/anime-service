@@ -102,12 +102,6 @@ pub fn v1_routes() -> Router<AppState> {
                 .route("/", get(downloads::find_downloads))
                 .route("/updates", get(downloads::get_downloads_events))
                 .nest(
-                    "/anime",
-                    AxumRouter::new()
-                        .route("/", get(batch::find_downloads))
-                        .route("/updates", get(batch::get_downloads_events)),
-                )
-                .nest(
                     "/batches",
                     AxumRouter::new()
                         .route("/", get(batch::find_downloads))
