@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/cc-debian12 AS application
+FROM gcr.io/distroless/static-debian12 AS application
 
 ARG TARGETPLATFORM
 

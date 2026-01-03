@@ -27,30 +27,32 @@ jobs:
       matrix:
         info:
           - {
-            os: "ubuntu-latest",
-            target: "x86_64-unknown-linux-gnu",
+            os: "ubuntu-24.04",
+            target: "x86_64-unknown-linux-musl",
           }
           - {
-            os: "ubuntu-latest",
-            target: "aarch64-unknown-linux-gnu",
+            os: "ubuntu-24.04-arm",
+            target: "aarch64-unknown-linux-musl",
           }
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.1
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+
+      - name: Install Musl toolchain
+        run: |
+          sudo apt update
+          sudo apt install -y musl-tools musl-dev
+
       - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           target: ${{ matrix.info.target }}
 
       - name: Cargo Build
-        uses: ClementTsang/cargo-action@v0.0.7
-        with:
-          command: build
-          args: --all-targets --verbose --target=${{ matrix.info.target }} --locked --release
-          use-cross: true
-          cross-version: ${{ matrix.info.cross-version || '0.2.5' }}
+        run: cargo build --all-targets --target=${{ matrix.info.target }} --locked --release
 
       - uses: actions/upload-artifact@v6
         with:
@@ -60,8 +62,8 @@ jobs:
             target/*/release/anime-service.exe
 
   publish:
-    needs: build
     runs-on: ubuntu-latest
+    needs: build
     permissions:
       contents: read
       packages: write
@@ -111,8 +113,8 @@ jobs:
       - name: Copy output files for Docker
         run: |
           mkdir -p exec/linux
-          cp "target/artifact x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/release/anime-service" exec/linux/amd64
-          cp "target/artifact aarch64-unknown-linux-gnu/aarch64-unknown-linux-gnu/release/anime-service" exec/linux/arm64
+          cp "target/artifact x86_64-unknown-linux-musl/x86_64-unknown-linux-musl/release/anime-service" exec/linux/amd64
+          cp "target/artifact aarch64-unknown-linux-musl/aarch64-unknown-linux-musl/release/anime-service" exec/linux/arm64
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
@@ -127,33 +129,26 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  deploy:
-    needs: publish
+  changelog:
     runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      actions: write
+      contents: write
     steps:
-      - name: Get Deployment API Token
-        id: token
-        uses: fjogeleit/http-request-action@a5b30eda00718e60b68f81d94e69c1a308fa18c4
+      - uses: actions/checkout@v6
+      - name: Update CHANGELOG
+        id: changelog
+        uses: requarks/changelog-action@v1
         with:
-          url: ${{secrets.DEPLOY_AUTH_URL}}
-          method: 'POST'
-          timeout: 30000
-          data: >-
-            {
-              "grant_type":"password",
-              "prompt":"none",
-              "client_id": "${{secrets.DEPLOY_CLIENT_ID}}",
-              "scope": "openid kube",
-              "username": "${{secrets.DEPLOY_USERNAME}}",
-              "password": "${{secrets.DEPLOY_PASSWORD}}"
-            }
-          contentType: "application/x-www-form-urlencoded"
+          token: ${{ github.token }}
+          tag: ${{ github.ref_name }}
 
-      - name: Update
-        id: refresh
-        uses: fjogeleit/http-request-action@a5b30eda00718e60b68f81d94e69c1a308fa18c4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          url: "${{secrets.DEPLOY_URL}}?image=${{needs.publish.outputs.tag}}"
-          method: 'PATCH'
-          timeout: 30000
-          bearerToken: ${{ fromJson(steps.token.outputs.response).access_token }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ !contains(github.ref_name, '-') }}
+          body: ${{ steps.changelog.outputs.changes }}
+          token: ${{ github.token }}
