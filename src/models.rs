@@ -14,10 +14,10 @@ pub struct ImageDimension {
 }
 
 impl From<kitsu::ImageDimension> for ImageDimension {
-    fn from(image_dimension: kitsu::ImageDimension) -> Self {
+    fn from(value: kitsu::ImageDimension) -> Self {
         Self {
-            width: image_dimension.width,
-            height: image_dimension.height,
+            width: value.width,
+            height: value.height,
         }
     }
 }
@@ -42,33 +42,33 @@ pub struct Images {
 }
 
 impl From<kitsu::Images> for Images {
-    fn from(images: kitsu::Images) -> Self {
+    fn from(value: kitsu::Images) -> Self {
         Self {
-            original: images.original,
-            large: images
+            original: value.original,
+            large: value
                 .large
-                .zip(images.meta.dimensions.large)
+                .zip(value.meta.dimensions.large)
                 .map(|(u, i)| ImageDefinition {
                     url: u,
                     dimensions: i.into(),
                 }),
-            medium: images
+            medium: value
                 .medium
-                .zip(images.meta.dimensions.medium)
+                .zip(value.meta.dimensions.medium)
                 .map(|(u, i)| ImageDefinition {
                     url: u,
                     dimensions: i.into(),
                 }),
-            small: images
+            small: value
                 .small
-                .zip(images.meta.dimensions.small)
+                .zip(value.meta.dimensions.small)
                 .map(|(u, i)| ImageDefinition {
                     url: u,
                     dimensions: i.into(),
                 }),
-            tiny: images
+            tiny: value
                 .tiny
-                .zip(images.meta.dimensions.tiny)
+                .zip(value.meta.dimensions.tiny)
                 .map(|(u, i)| ImageDefinition {
                     url: u,
                     dimensions: i.into(),
@@ -85,11 +85,11 @@ pub struct Titles {
 }
 
 impl From<kitsu::Titles> for Titles {
-    fn from(titles: kitsu::Titles) -> Self {
+    fn from(value: kitsu::Titles) -> Self {
         Self {
-            en: titles.en,
-            en_jp: titles.en_jp,
-            ja_jp: titles.ja_jp,
+            en: value.en,
+            en_jp: value.en_jp,
+            ja_jp: value.ja_jp,
         }
     }
 }
@@ -155,37 +155,37 @@ pub struct DownloadGroup {
 }
 
 impl From<nyaa::AnimeDownloads> for DownloadGroup {
-    fn from(a: nyaa::AnimeDownloads) -> Self {
-        let created_at = a
+    fn from(value: nyaa::AnimeDownloads) -> Self {
+        let created_at = value
             .downloads
             .iter()
             .map(|d| d.pub_date)
             .min()
             .unwrap_or_default();
-        let updated_at = a
+        let updated_at = value
             .downloads
             .iter()
             .map(|d| d.pub_date)
             .max()
             .unwrap_or_default();
         Self {
-            title: a.title,
-            variant: a.variant.into(),
+            title: value.title,
+            variant: value.variant.into(),
             created_at,
             updated_at,
-            downloads: a.downloads.into_iter().map(|it| it.into()).collect(),
+            downloads: value.downloads.into_iter().map(|it| it.into()).collect(),
         }
     }
 }
 
 impl From<DownloadGroup> for proto::api::v2::DownloadCollection {
-    fn from(val: DownloadGroup) -> Self {
+    fn from(value: DownloadGroup) -> Self {
         proto::api::v2::DownloadCollection {
-            created_at: Some(prost_timestamp(val.created_at)),
-            updated_at: Some(prost_timestamp(val.updated_at)),
-            title: val.title,
-            variant: Some(val.variant.into()),
-            downloads: val.downloads.into_iter().map(|d| d.into()).collect(),
+            created_at: Some(prost_timestamp(value.created_at)),
+            updated_at: Some(prost_timestamp(value.updated_at)),
+            title: value.title,
+            variant: Some(value.variant.into()),
+            downloads: value.downloads.into_iter().map(|d| d.into()).collect(),
         }
     }
 }
@@ -239,23 +239,23 @@ pub struct Episode {
 }
 
 impl From<nyaa::Episode> for Episode {
-    fn from(a: nyaa::Episode) -> Self {
+    fn from(value: nyaa::Episode) -> Self {
         Self {
-            episode: a.episode,
-            decimal: a.decimal,
-            version: a.version,
-            extra: a.extra,
+            episode: value.episode,
+            decimal: value.decimal,
+            version: value.version,
+            extra: value.extra,
         }
     }
 }
 
 impl From<Episode> for proto::api::v2::Episode {
-    fn from(val: Episode) -> Self {
+    fn from(value: Episode) -> Self {
         Self {
-            number: val.episode,
-            decimal: val.decimal.unwrap_or_default(),
-            version: val.version.unwrap_or_default(),
-            extra: val.extra.unwrap_or_default(),
+            number: value.episode,
+            decimal: value.decimal.unwrap_or_default(),
+            version: value.version.unwrap_or_default(),
+            extra: value.extra.unwrap_or_default(),
         }
     }
 }
@@ -270,25 +270,25 @@ pub struct Download {
 }
 
 impl From<nyaa::Download> for Download {
-    fn from(a: nyaa::Download) -> Self {
+    fn from(value: nyaa::Download) -> Self {
         Self {
-            comments: a.comments,
-            resolution: a.resolution,
-            torrent: a.torrent,
-            file_name: a.file_name,
-            published_date: a.pub_date,
+            comments: value.comments,
+            resolution: value.resolution,
+            torrent: value.torrent,
+            file_name: value.file_name,
+            published_date: value.pub_date,
         }
     }
 }
 
 impl From<Download> for proto::api::v2::Download {
-    fn from(val: Download) -> Self {
+    fn from(value: Download) -> Self {
         Self {
-            published_date: Some(prost_timestamp(val.published_date)),
-            resolution: val.resolution as u32,
-            comments: val.comments,
-            torrent: val.torrent,
-            file_name: val.file_name,
+            published_date: Some(prost_timestamp(value.published_date)),
+            resolution: value.resolution as u32,
+            comments: value.comments,
+            torrent: value.torrent,
+            file_name: value.file_name,
         }
     }
 }
