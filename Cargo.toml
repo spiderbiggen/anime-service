@@ -54,5 +54,5 @@ url = { version = "2", features = ["serde"] }
 opt-level = 3
 
 [profile.release]
-lto = "fat"
-strip = "symbols"
+lto = true
+codegen-units = 1
