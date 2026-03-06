@@ -2,10 +2,10 @@ use std::ops::RangeInclusive;
 use std::str::FromStr;
 
 use winnow::ascii::{alphanumeric1, digit1};
-use winnow::combinator::{alt, delimited, opt, permutation, preceded, separated_pair};
+use winnow::combinator::{alt, delimited, opt, preceded, separated_pair};
 use winnow::error::{ContextError, ParserError};
 use winnow::token::{rest, take_till, take_until};
-use winnow::{Parser, Result};
+use winnow::{unordered_seq, Parser, Result};
 
 use crate::parsers::{ParsedDownload, ParsedDownloadVariant, ParsedEpisode};
 
@@ -33,7 +33,7 @@ fn parse_episode_identifier<'s>(input: &mut &'s str) -> Result<Option<ParsedEpis
     let Some(number) = opt(parse_digits).parse_next(input)? else {
         return Ok(None);
     };
-    let (decimal, version) = permutation((
+    let (decimal, version) = unordered_seq!((
         opt(preceded('.', parse_digits)),
         opt(preceded('v', parse_digits)),
     ))
