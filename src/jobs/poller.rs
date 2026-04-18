@@ -16,7 +16,7 @@ use crate::datasource;
 use crate::models::DownloadGroup;
 use crate::state::{AppState, DBPool, ReqwestClient};
 
-const DEFAULT_INTERVAL: Duration = Duration::from_secs(5 * 60);
+const DEFAULT_INTERVAL: Duration = Duration::from_mins(5);
 
 pub trait NewDownloadsHandler: Sized + Send + Sync {
     fn handle_new_downloads(

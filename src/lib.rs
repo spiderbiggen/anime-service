@@ -58,8 +58,7 @@ pub async fn serve_combined(app_state: AppState) -> Result<()> {
                 .headers()
                 .get(CONTENT_TYPE)
                 .map(HeaderValue::as_bytes)
-                .filter(|content_type| content_type.starts_with(b"application/grpc"))
-                .is_some();
+                .is_some_and(|content_type| content_type.starts_with(b"application/grpc"));
             // 0 -> http, 1 -> grpc
             usize::from(is_grpc)
         },
