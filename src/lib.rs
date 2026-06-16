@@ -31,7 +31,14 @@ pub mod state;
 
 static SOCKET: &SocketAddr = &SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8000);
 
+fn setup_rustls() {
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install crypto provider");
+}
+
 pub async fn serve_axum(app_state: AppState) -> Result<()> {
+    setup_rustls();
     let router = create_axum_router(app_state);
     let listener = TcpListener::bind(SOCKET).await?;
     tracing::debug!("listening on {SOCKET}");
@@ -40,6 +47,7 @@ pub async fn serve_axum(app_state: AppState) -> Result<()> {
 }
 
 pub async fn serve_tonic(sender: Sender<models::DownloadGroup>) -> Result<()> {
+    setup_rustls();
     let router = create_tonic_router(sender);
     let listener = TcpListener::bind(SOCKET).await?;
     info!("Listening on {SOCKET}");
@@ -48,6 +56,7 @@ pub async fn serve_tonic(sender: Sender<models::DownloadGroup>) -> Result<()> {
 }
 
 pub async fn serve_combined(app_state: AppState) -> Result<()> {
+    setup_rustls();
     let tonic_router = create_tonic_router(app_state.downloads_channel.clone());
     let axum_router = create_axum_router(app_state);
 
