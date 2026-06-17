@@ -1,6 +1,6 @@
 [package]
 name = "anime-service"
-version = "0.2.10"
+version = "0.2.11"
 authors = ["Stefan Breetveld <spiderbiggen@gmail.com>"]
 edition = "2021"
 
