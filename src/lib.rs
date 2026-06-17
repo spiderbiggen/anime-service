@@ -5,6 +5,7 @@ use anyhow::Result;
 use axum::body::Body;
 use axum::http::{HeaderValue, Request};
 use axum::{routing::get, Router as AxumRouter, Router};
+use axum::response::NoContent;
 use reqwest::header::CONTENT_TYPE;
 use tokio::net::TcpListener;
 use tokio::sync::broadcast::Sender;
@@ -98,6 +99,7 @@ pub fn v1_routes() -> Router<AppState> {
     use controllers::rest::{batch, downloads, episode, movie};
 
     AxumRouter::new()
+        .route("/health", get(async || NoContent))
         .nest(
             "/shows",
             AxumRouter::new()
