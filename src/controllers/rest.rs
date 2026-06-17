@@ -220,7 +220,7 @@ pub mod downloads {
             loop {
                 match rx.recv().await {
                     Ok(i) => match Event::default().event("download").json_data(i) {
-                        Ok(event) => yield  event,
+                        Ok(event) => yield event,
                         Err(e) => error!(error = ?e, "failed to serialize"),
                     }
                     Err(e) => error!(error = ?e, "sender closed"),
