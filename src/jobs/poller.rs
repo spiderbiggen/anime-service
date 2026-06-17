@@ -7,7 +7,7 @@ use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use tokio::sync::broadcast::Sender;
 use tokio::task::JoinHandle;
-use tokio::time::{interval_at, timeout, Instant, Interval, MissedTickBehavior};
+use tokio::time::{Instant, Interval, MissedTickBehavior, interval_at, timeout};
 use tracing::{debug, info, instrument, trace};
 
 use datasource::repository;

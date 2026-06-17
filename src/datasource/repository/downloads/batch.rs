@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use sqlx::types::Uuid;
 use sqlx::{Connection, Executor, Postgres};
 
-use super::{update_download, RawSingleDownloadResult, SingleDownloadResult, PROVIDER_DEFAULT};
+use super::{PROVIDER_DEFAULT, RawSingleDownloadResult, SingleDownloadResult, update_download};
 
 pub(super) async fn upsert<C>(
     conn: &mut C,

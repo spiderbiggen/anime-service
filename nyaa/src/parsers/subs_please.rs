@@ -5,7 +5,7 @@ use winnow::ascii::{alphanumeric1, digit1};
 use winnow::combinator::{alt, delimited, opt, preceded, separated_pair};
 use winnow::error::{ContextError, ParserError};
 use winnow::token::{rest, take_till, take_until};
-use winnow::{unordered_seq, Parser, Result};
+use winnow::{Parser, Result, unordered_seq};
 
 use crate::parsers::{ParsedDownload, ParsedDownloadVariant, ParsedEpisode};
 

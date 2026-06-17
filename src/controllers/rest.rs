@@ -27,8 +27,8 @@ pub(crate) mod anime {
     use crate::errors::Error;
     use crate::models;
     use crate::state::ReqwestClient;
-    use axum::extract::{Path, State};
     use axum::Json;
+    use axum::extract::{Path, State};
 
     pub(crate) async fn by_id(
         Path(id): Path<u32>,
@@ -52,10 +52,10 @@ pub(crate) mod batch {
     use std::convert::Infallible;
 
     use async_stream::try_stream;
-    use axum::extract::{Query, State};
-    use axum::response::sse::{Event, KeepAlive};
-    use axum::response::Sse;
     use axum::Json;
+    use axum::extract::{Query, State};
+    use axum::response::Sse;
+    use axum::response::sse::{Event, KeepAlive};
     use futures::Stream;
     use tracing::error;
 
@@ -98,10 +98,10 @@ pub(crate) mod episode {
     use std::convert::Infallible;
 
     use async_stream::try_stream;
-    use axum::extract::{Query, State};
-    use axum::response::sse::{Event, KeepAlive};
-    use axum::response::Sse;
     use axum::Json;
+    use axum::extract::{Query, State};
+    use axum::response::Sse;
+    use axum::response::sse::{Event, KeepAlive};
     use futures::Stream;
     use tracing::error;
 
@@ -142,10 +142,10 @@ pub(crate) mod movie {
     use std::convert::Infallible;
 
     use async_stream::try_stream;
-    use axum::extract::{Query, State};
-    use axum::response::sse::{Event, KeepAlive};
-    use axum::response::Sse;
     use axum::Json;
+    use axum::extract::{Query, State};
+    use axum::response::Sse;
+    use axum::response::sse::{Event, KeepAlive};
     use futures::Stream;
     use tracing::error;
 
@@ -186,10 +186,10 @@ pub mod downloads {
     use std::convert::Infallible;
 
     use async_stream::try_stream;
-    use axum::extract::{Query, State};
-    use axum::response::sse::{Event, KeepAlive};
-    use axum::response::Sse;
     use axum::Json;
+    use axum::extract::{Query, State};
+    use axum::response::Sse;
+    use axum::response::sse::{Event, KeepAlive};
     use futures::Stream;
     use tracing::error;
 

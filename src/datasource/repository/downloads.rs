@@ -4,7 +4,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use futures::StreamExt;
 use sqlx::types::Uuid;
-use sqlx::{query_file, Connection, Executor, Pool, Postgres};
+use sqlx::{Connection, Executor, Pool, Postgres, query_file};
 
 use crate::datasource::repository::download_resolutions;
 use crate::models::{DownloadGroup, DownloadVariant, Episode};

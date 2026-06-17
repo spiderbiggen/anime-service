@@ -4,14 +4,14 @@ use std::sync::Arc;
 use anyhow::Result;
 use axum::body::Body;
 use axum::http::{HeaderValue, Request};
-use axum::{routing::get, Router as AxumRouter, Router};
 use axum::response::NoContent;
+use axum::{Router as AxumRouter, Router, routing::get};
 use reqwest::header::CONTENT_TYPE;
 use tokio::net::TcpListener;
 use tokio::sync::broadcast::Sender;
+use tower::ServiceBuilder;
 use tower::make::Shared;
 use tower::steer::Steer;
-use tower::ServiceBuilder;
 use tower_http::compression::predicate::NotForContentType;
 use tower_http::compression::{DefaultPredicate, Predicate};
 use tower_http::{

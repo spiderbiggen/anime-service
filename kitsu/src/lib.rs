@@ -2,7 +2,7 @@
 extern crate serde;
 
 use reqwest::StatusCode;
-use serde::{de, Deserialize};
+use serde::{Deserialize, de};
 use thiserror::Error as ThisError;
 use tracing::instrument;
 use url::Url;
@@ -90,8 +90,8 @@ where
 }
 
 pub mod anime {
-    use crate::{get_resource, get_resources, models};
     use crate::{Collection, Result, Single};
+    use crate::{get_resource, get_resources, models};
     use url::Url;
 
     /// Fetches a single anime resource from the Kitsu API by its ID.

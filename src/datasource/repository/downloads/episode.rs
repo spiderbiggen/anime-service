@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use sqlx::types::Uuid;
 use sqlx::{Connection, Executor, Postgres, Transaction};
 
-use super::{update_download, RawSingleDownloadResult, SingleDownloadResult, PROVIDER_DEFAULT};
+use super::{PROVIDER_DEFAULT, RawSingleDownloadResult, SingleDownloadResult, update_download};
 use crate::models::Episode;
 
 pub(super) async fn upsert<C>(

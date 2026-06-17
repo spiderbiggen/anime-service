@@ -4,7 +4,7 @@ use ahash::RandomState;
 use anyhow::Result;
 use futures::StreamExt;
 use sqlx::types::Uuid;
-use sqlx::{query_file_as, Executor, Postgres};
+use sqlx::{Executor, Postgres, query_file_as};
 
 use crate::datasource::repository::download_resolutions::models::DownloadEntity;
 use crate::models::Download;
