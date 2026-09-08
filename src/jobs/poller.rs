@@ -147,11 +147,14 @@ impl TransientPoller {
 }
 
 impl NewDownloadsHandler for TransientPoller {
-    async fn handle_new_downloads(&self, groups: Vec<DownloadGroup>) -> anyhow::Result<()> {
+    fn handle_new_downloads(
+        &self,
+        groups: Vec<DownloadGroup>,
+    ) -> impl Future<Output = anyhow::Result<()>> {
         for group in groups {
             let _ = self.sender.send(group);
         }
-        Ok(())
+        std::future::ready(Ok(()))
     }
 }
 
