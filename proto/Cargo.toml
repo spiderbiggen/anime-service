@@ -5,6 +5,9 @@ edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lints]
+# Only generated code so don't inherit workspace lints
+
 [dependencies]
 tonic = { version = "0.14.0", default-features = false, features = ["codegen"] }
 tonic-prost = "0.14.0"
