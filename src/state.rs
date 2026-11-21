@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use axum::extract::FromRef;
 use serde::Deserialize;
@@ -20,7 +22,7 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Result<Self> {
         let (tx, _) = broadcast::channel(32);
-        let client = reqwest::Client::new();
+        let client = create_http_client()?;
         let tmdb = create_tmdb_client(client.clone())?;
         Ok(Self {
             client,
@@ -32,6 +34,27 @@ impl AppState {
 }
 
 pub type ReqwestClient = reqwest::Client;
+
+/// How long to wait for a connection to an upstream service.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+/// How long a whole request to an upstream service may take, including reading the body.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Creates the HTTP client shared by every upstream service (Nyaa and TMDB).
+///
+/// Connection pools are per host, so sharing the client mostly buys one place to configure the
+/// timeouts and the user agent.
+fn create_http_client() -> Result<reqwest::Client> {
+    Ok(reqwest::Client::builder()
+        .connect_timeout(CONNECT_TIMEOUT)
+        .timeout(REQUEST_TIMEOUT)
+        .user_agent(concat!(
+            env!("CARGO_PKG_NAME"),
+            "/",
+            env!("CARGO_PKG_VERSION")
+        ))
+        .build()?)
+}
 
 impl FromRef<AppState> for ReqwestClient {
     fn from_ref(input: &AppState) -> Self {
