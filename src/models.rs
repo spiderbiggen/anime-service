@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 
 use jiff::Timestamp;
 use jiff::civil::Date;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tmdb::images::{BackdropSize, PosterSize, backdrop_url, poster_url};
 use tmdb::search::TvSearchResult;
 use tmdb::tv::{ExternalIds, TvDetails};
@@ -108,6 +108,35 @@ pub struct Show {
     pub backdrop_url: Option<String>,
 }
 
+/// The part of a show that is attached to downloads.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ShowSummary {
+    pub tmdb_id: u32,
+    /// The `TheTVDB` id, which Sonarr uses. Missing when TMDB does not know it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tvdb_id: Option<u32>,
+    pub name: String,
+    pub overview: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poster_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backdrop_url: Option<String>,
+}
+
+impl ShowSummary {
+    #[must_use]
+    pub fn new(details: TvDetails, external_ids: Option<ExternalIds>) -> Self {
+        Self {
+            tmdb_id: details.id,
+            tvdb_id: external_ids.and_then(|ids| ids.tvdb_id),
+            name: details.name,
+            overview: details.overview,
+            poster_url: poster(details.poster_path),
+            backdrop_url: backdrop(details.backdrop_path),
+        }
+    }
+}
+
 impl Show {
     #[must_use]
     pub fn new(details: TvDetails, external_ids: Option<ExternalIds>) -> Self {
@@ -146,6 +175,9 @@ pub struct DownloadGroup {
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
     pub downloads: Vec<Download>,
+    /// The show this release belongs to, when it could be matched to one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show: Option<ShowSummary>,
 }
 
 impl From<nyaa::AnimeDownloads> for DownloadGroup {
@@ -168,6 +200,7 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
             created_at,
             updated_at,
             downloads: value.downloads.into_iter().map(Into::into).collect(),
+            show: None,
         }
     }
 }
@@ -271,6 +304,32 @@ mod tests {
         assert_eq!(show.backdrop_url, None);
         assert_eq!(show.last_air_date, None);
         assert_eq!(show.genres[0].name, "Animation");
+    }
+
+    #[test]
+    fn show_summary_keeps_only_what_downloads_need() {
+        let summary = ShowSummary::new(details(), Some(external_ids(Some(99))));
+
+        assert_eq!(summary.tmdb_id, 7);
+        assert_eq!(summary.tvdb_id, Some(99));
+        assert_eq!(summary.name, "Sample");
+        assert_eq!(
+            summary.poster_url.as_deref(),
+            Some("https://image.tmdb.org/t/p/w500/p.jpg")
+        );
+        assert_eq!(summary.backdrop_url, None);
+    }
+
+    #[test]
+    fn show_summary_survives_a_json_round_trip() {
+        let summary = ShowSummary::new(details(), None);
+
+        let json = serde_json::to_value(&summary).expect("serializes");
+        assert!(json.get("tvdb_id").is_none());
+        let parsed: ShowSummary = serde_json::from_value(json).expect("deserializes");
+
+        assert_eq!(parsed.tmdb_id, 7);
+        assert_eq!(parsed.tvdb_id, None);
     }
 
     #[test]

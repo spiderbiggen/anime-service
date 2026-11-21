@@ -7,7 +7,7 @@ use jiff_sqlx::ToSqlx;
 use sqlx::types::Uuid;
 use sqlx::{Connection, Executor, Pool, Postgres, query_file};
 
-use crate::datasource::repository::download_resolutions;
+use crate::datasource::repository::{download_resolutions, shows};
 use crate::models::{DownloadGroup, DownloadVariant, Episode};
 
 pub mod batch;
@@ -87,11 +87,20 @@ pub async fn get_with_downloads(
                 created_at: r.created_at,
                 updated_at: r.updated_at,
                 downloads: downloads.remove(&r.id).unwrap_or_default(),
+                show: None,
             })
         })
         .collect();
     let mut episodes = result?;
     episodes.sort_by_key(|ep| Reverse(ep.updated_at));
+
+    let mut titles: Vec<String> = episodes.iter().map(|ep| ep.title.clone()).collect();
+    titles.sort_unstable();
+    titles.dedup();
+    let summaries = shows::summaries_for_titles(&executor, &titles).await?;
+    for episode in &mut episodes {
+        episode.show = summaries.get(&episode.title).cloned();
+    }
     Ok(episodes)
 }
 

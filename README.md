@@ -19,6 +19,17 @@ The downloads list endpoints (not `/updates`) accept an optional case-insensitiv
 
 Live updates are Server-Sent Events: each new release arrives as an event named `download` whose data is the same JSON as the list endpoints.
 
+## Show matching
+
+When a new release arrives, the service looks its title up on TMDB (the top result tagged Animation) and attaches the show to the download as a `show` object with `tmdb_id`, `tvdb_id`, `name`, `overview`, `poster_url` and `backdrop_url`. It appears in the downloads endpoints and in the SSE events. Matching is best-effort and takes at most about 5 seconds, so a release is never held back: if TMDB is slow or has no match, the download is sent without a `show`. Titles are only looked up when a new release for them arrives, so older downloads get a `show` later.
+
+Matches live in the `title_match` table and show data in the `show` table. A title with no match is retried after a week, and show data older than 30 days is refreshed the next time a release for it arrives. To fix a wrong match, add a manual row, which the resolver never overwrites:
+
+```sql
+INSERT INTO title_match (title, tmdb_id, source) VALUES ('Some Title', 12345, 'manual')
+ON CONFLICT (title) DO UPDATE SET tmdb_id = EXCLUDED.tmdb_id, source = 'manual';
+```
+
 ## Running
 
 Set `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASS` and `PG_DATABASE`, plus `TMDB_ACCESS_TOKEN` (a TMDB API read access token; the service refuses to start without it). A `.env` file works locally. Migrations run on startup. Use `RUST_LOG` to control logging.
