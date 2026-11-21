@@ -28,10 +28,10 @@ async fn main() -> Result<()> {
 }
 
 fn get_poller(app_state: &AppState) -> Poller<PersistentPoller> {
-    use chrono::{Duration, Utc};
+    use jiff::{SignedDuration, Timestamp};
 
-    let one_week = Duration::weeks(1);
-    let last_updated_at = Utc::now() - one_week;
+    let one_week = SignedDuration::from_hours(24 * 7);
+    let last_updated_at = Timestamp::now() - one_week;
     let handler = PersistentPoller::new(app_state);
     Poller::new_with_last_updated_at(app_state.client.clone(), handler, last_updated_at)
 }

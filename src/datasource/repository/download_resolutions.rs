@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use ahash::RandomState;
 use anyhow::Result;
 use futures::StreamExt;
+use jiff_sqlx::ToSqlx;
 use sqlx::types::Uuid;
 use sqlx::{Executor, Postgres, query_file_as};
 
@@ -10,7 +11,7 @@ use crate::datasource::repository::download_resolutions::models::DownloadEntity;
 use crate::models::Download;
 
 pub(super) mod models {
-    use chrono::{DateTime, Utc};
+    use jiff_sqlx::Timestamp;
     use sqlx::types::Uuid;
 
     use crate::models::Download;
@@ -24,7 +25,7 @@ pub(super) mod models {
         pub comments: String,
         #[allow(dead_code)]
         pub magnet: Option<String>,
-        pub created_at: DateTime<Utc>,
+        pub created_at: Timestamp,
     }
 
     impl From<DownloadEntity> for Download {
@@ -34,7 +35,7 @@ pub(super) mod models {
                 resolution: value.resolution.cast_unsigned(),
                 torrent: value.torrent,
                 file_name: value.file_name,
-                published_date: value.created_at,
+                published_date: value.created_at.to_jiff(),
             }
         }
     }
@@ -52,7 +53,7 @@ where
         &download.file_name,
         download.comments,
         Option::<String>::None,
-        download.published_date,
+        download.published_date.to_sqlx() as _,
     )
     .execute(executor)
     .await?;

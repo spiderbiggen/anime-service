@@ -1,4 +1,4 @@
-SELECT d.id, d.updated_at, ARRAY_AGG(dr.resolution) AS resolutions
+SELECT d.id, d.updated_at AS "updated_at: jiff_sqlx::Timestamp", ARRAY_AGG(dr.resolution) AS resolutions
 FROM download d
          JOIN download_resolution dr ON d.id = dr.download_id
 WHERE d.variant = 'movie'

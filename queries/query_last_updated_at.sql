@@ -1,2 +1,2 @@
-SELECT MAX(updated_at) AS updated_at
+SELECT MAX(updated_at) AS "updated_at: jiff_sqlx::Timestamp"
 FROM download

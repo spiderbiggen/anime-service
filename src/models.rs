@@ -1,7 +1,7 @@
 use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::Serialize;
 use url::Url;
 
@@ -97,8 +97,8 @@ impl From<kitsu::Titles> for Titles {
 #[derive(Serialize, Clone, Debug)]
 pub struct Show {
     pub id: u32,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     pub slug: String,
     pub synopsis: String,
     pub description: String,
@@ -149,8 +149,8 @@ pub struct DownloadGroup {
     pub title: String,
     #[serde(flatten)]
     pub variant: DownloadVariant,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     pub downloads: Vec<Download>,
 }
 
@@ -266,7 +266,7 @@ pub struct Download {
     pub resolution: u16,
     pub torrent: String,
     pub file_name: String,
-    pub published_date: DateTime<Utc>,
+    pub published_date: Timestamp,
 }
 
 impl From<nyaa::Download> for Download {
@@ -293,9 +293,9 @@ impl From<Download> for proto::api::v2::Download {
     }
 }
 
-fn prost_timestamp(date_time: DateTime<Utc>) -> prost_types::Timestamp {
+fn prost_timestamp(date_time: Timestamp) -> prost_types::Timestamp {
     prost_types::Timestamp {
-        seconds: date_time.timestamp(),
-        nanos: date_time.timestamp_subsec_nanos().cast_signed(),
+        seconds: date_time.as_second(),
+        nanos: date_time.subsec_nanosecond(),
     }
 }

@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT MAX(updated_at) AS \"updated_at: jiff_sqlx::Timestamp\"\nFROM download",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "updated_at: jiff_sqlx::Timestamp",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0a51604d5c23ed39060e052ce90b12e9c401455d4a7a22b75ef35b898b545d83"
+}

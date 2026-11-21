@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use ahash::RandomState;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_json::Value;
 use url::Url;
 
@@ -77,8 +77,8 @@ pub struct Titles {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Attributes {
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     pub slug: String,
     pub synopsis: String,
     pub description: String,

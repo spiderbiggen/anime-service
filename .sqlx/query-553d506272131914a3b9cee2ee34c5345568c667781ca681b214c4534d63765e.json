@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT download_id,\n       resolution,\n       torrent,\n       file_name,\n       comments,\n       magnet,\n       created_at AS \"created_at: jiff_sqlx::Timestamp\"\nFROM download_resolution WHERE download_id = ANY($1) ORDER BY resolution DESC;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "download_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "download_resolution",
+            "name": "download_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "resolution",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "download_resolution",
+            "name": "resolution"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "torrent",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "download_resolution",
+            "name": "torrent"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "file_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "download_resolution",
+            "name": "file_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "comments",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "download_resolution",
+            "name": "comments"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "magnet",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "download_resolution",
+            "name": "magnet"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: jiff_sqlx::Timestamp",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "download_resolution",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "553d506272131914a3b9cee2ee34c5345568c667781ca681b214c4534d63765e"
+}

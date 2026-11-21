@@ -1,0 +1,183 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id,\n       provider,\n       title,\n       episode,\n       decimal,\n       version,\n       created_at AS \"created_at: jiff_sqlx::Timestamp\",\n       updated_at AS \"updated_at: jiff_sqlx::Timestamp\",\n       extra,\n       variant as \"variant: Variant\",\n       start_index,\n       end_index\nFROM download\nWHERE ($1::download_variant IS NULL OR variant = $1::download_variant)\n  AND (title ILIKE COALESCE($2, '') || '%')\nORDER BY updated_at DESC\nLIMIT 25;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "provider",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "provider"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "episode",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "episode"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "decimal",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "decimal"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: jiff_sqlx::Timestamp",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at: jiff_sqlx::Timestamp",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "extra",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "extra"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "variant: Variant",
+        "type_info": {
+          "Custom": {
+            "name": "download_variant",
+            "kind": {
+              "Enum": [
+                "batch",
+                "episode",
+                "movie"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "variant"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "start_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "start_index"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "end_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "download",
+            "name": "end_index"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "download_variant",
+            "kind": {
+              "Enum": [
+                "batch",
+                "episode",
+                "movie"
+              ]
+            }
+          }
+        },
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "772ca33b691ded0aa5ef39dbac5c70c858208deeab874972478be81ed7edd31b"
+}
