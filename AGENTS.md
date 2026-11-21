@@ -1,0 +1,45 @@
+# AGENTS.md
+
+Guidance for AI coding agents working in this repo. See `README.md` for the overview and API.
+
+## Commands
+
+```sh
+cargo fmt --all
+cargo test --workspace
+cargo clippy --all-targets --workspace -- -D warnings   # CI fails on any warning
+cargo build --locked
+```
+
+CI (`.github/workflows/ci.yml`) runs fmt check, tests, and clippy. Run all three before finishing.
+
+## Layout
+
+- Cargo workspace: root crate `anime-service` plus `nyaa`, `kitsu`, `proto`. `tmdb/` is an unfinished stub outside the workspace.
+- `src/controllers/{rest,grpc}.rs` handle transport; `src/datasource/repository/` holds DB access; `src/jobs/poller.rs` is the Nyaa poller; `src/state.rs` holds `AppState`.
+- `src/bin/`: `anime-service` (production), `combined-debug` (fast polling), `streams` (no DB).
+- Router wiring and the shared port-8000 HTTP/gRPC split live in `src/lib.rs`.
+
+## Conventions
+
+- Avoid `unwrap` and `expect` outside `main`. Propagate errors instead.
+- Prefer iterators over manual loops, unless the iterator chain becomes hard to read.
+- Write good doc comments (`///`) on public items. Keep inline code comments minimal and only for non-obvious "why".
+- Use `tracing` (`#[instrument]`, `info!`, etc.), not `println!`.
+
+## Database
+
+- SQL lives in `queries/*.sql` and is checked at compile time by sqlx. Migrations are in `migrations/` and run on startup.
+- Never edit an existing migration; add a new one.
+- After changing a query or migration, refresh the offline cache (`cargo sqlx prepare --workspace`) and commit the `.sqlx/` changes. Otherwise CI, which has no database, will fail to build.
+- Config comes from `PG_*` env vars. `.env` is for local use. Do not print or commit its values.
+
+## Protobuf
+
+`proto/protos/api.v2.proto` is compiled by `proto/build.rs` and needs `protoc` installed. Keep changes backward compatible (don't renumber or reuse fields).
+
+## Git
+
+- Commit messages follow Conventional Commits (`feat:`, `fix:`, `chore(deps):`).
+- Dependency bumps come from Renovate. Don't hand-edit `Cargo.lock` beyond what cargo produces.
+- Releases are cut by pushing a `vX.Y.Z` tag, which triggers the Docker image build. Don't tag unless asked.
