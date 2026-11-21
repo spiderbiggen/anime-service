@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{Duration, Utc};
+use jiff::{SignedDuration, Timestamp};
 use reqwest::Client;
 use tokio::sync::broadcast;
 use tracing_subscriber::prelude::*;
@@ -15,8 +15,8 @@ async fn main() -> Result<()> {
         .init();
 
     let (tx, _) = broadcast::channel(32);
-    let one_week = Duration::try_weeks(1).expect("1 week fits in a duration");
-    let last_updated_at = Utc::now() - one_week;
+    let one_week = SignedDuration::from_hours(24 * 7);
+    let last_updated_at = Timestamp::now() - one_week;
     let handler = TransientPoller::new(tx.clone());
     let poller = Poller::new_with_last_updated_at(Client::default(), handler, last_updated_at);
     poller.start()?;

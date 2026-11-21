@@ -1,5 +1,6 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
+use jiff_sqlx::ToSqlx;
 use sqlx::types::Uuid;
 use sqlx::{Connection, Executor, Postgres, Transaction};
 
@@ -10,8 +11,8 @@ pub(super) async fn upsert<C>(
     conn: &mut C,
     title: &str,
     episode: &Episode,
-    created_at: &DateTime<Utc>,
-    updated_at: &DateTime<Utc>,
+    created_at: &Timestamp,
+    updated_at: &Timestamp,
 ) -> Result<(Uuid, Vec<u16>)>
 where
     C: Connection<Database = Postgres>,
@@ -58,8 +59,8 @@ async fn insert_episode(
     pool: &mut Transaction<'_, Postgres>,
     title: &str,
     episode: &Episode,
-    created_at: &DateTime<Utc>,
-    updated_at: &DateTime<Utc>,
+    created_at: &Timestamp,
+    updated_at: &Timestamp,
 ) -> Result<Uuid> {
     let query = sqlx::query_file!(
         "queries/episode/insert_episode_download.sql",
@@ -69,8 +70,8 @@ async fn insert_episode(
         episode.decimal.map(u32::cast_signed),
         episode.version.map(u32::cast_signed),
         episode.extra,
-        created_at,
-        updated_at,
+        (*created_at).to_sqlx() as _,
+        (*updated_at).to_sqlx() as _,
     );
     Ok(query.fetch_one(&mut **pool).await?.id)
 }

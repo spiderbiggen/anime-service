@@ -33,6 +33,8 @@ CI (`.github/workflows/ci.yml`) runs fmt check, tests, and clippy. Run all three
 - SQL lives in `queries/*.sql` and is checked at compile time by sqlx. Migrations are in `migrations/` and run on startup.
 - Never edit an existing migration; add a new one.
 - After changing a query or migration, refresh the offline cache (`cargo sqlx prepare --workspace`) and commit the `.sqlx/` changes. Otherwise CI, which has no database, will fail to build.
+- Dates and times use `jiff` (`jiff::Timestamp`), not `chrono`. sqlx 0.9 has no `jiff` support, so at the SQL boundary use the `jiff_sqlx` wrappers: alias result columns as `AS "col: jiff_sqlx::Timestamp"` in the `.sql` file and convert with `.to_jiff()`, and bind parameters with `.to_sqlx() as _`.
+- Regenerating the cache needs a running Postgres with the migrations applied: set `DATABASE_URL` and run `cargo sqlx prepare --workspace -- --all-targets`.
 - Config comes from `PG_*` env vars. `.env` is for local use. Do not print or commit its values.
 
 ## Protobuf

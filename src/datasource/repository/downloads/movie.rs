@@ -1,4 +1,5 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
+use jiff_sqlx::ToSqlx;
 use sqlx::types::Uuid;
 use sqlx::{Connection, Executor, Postgres};
 
@@ -7,8 +8,8 @@ use super::{PROVIDER_DEFAULT, RawSingleDownloadResult, SingleDownloadResult, upd
 pub(super) async fn upsert<C>(
     conn: &mut C,
     title: &str,
-    created_at: &DateTime<Utc>,
-    updated_at: &DateTime<Utc>,
+    created_at: &Timestamp,
+    updated_at: &Timestamp,
 ) -> anyhow::Result<(Uuid, Vec<u16>)>
 where
     C: Connection<Database = Postgres>,
@@ -48,8 +49,8 @@ where
 async fn insert<'e, E>(
     executor: E,
     title: &str,
-    created_at: &DateTime<Utc>,
-    updated_at: &DateTime<Utc>,
+    created_at: &Timestamp,
+    updated_at: &Timestamp,
 ) -> anyhow::Result<Uuid>
 where
     E: Executor<'e, Database = Postgres>,
@@ -58,8 +59,8 @@ where
         "queries/movie/insert_movie_download.sql",
         PROVIDER_DEFAULT,
         title,
-        created_at,
-        updated_at,
+        (*created_at).to_sqlx() as _,
+        (*updated_at).to_sqlx() as _,
     )
     .fetch_one(executor)
     .await?;

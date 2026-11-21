@@ -1,6 +1,7 @@
 use std::ops::RangeInclusive;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
+use jiff_sqlx::ToSqlx;
 use sqlx::types::Uuid;
 use sqlx::{Connection, Executor, Postgres};
 
@@ -10,8 +11,8 @@ pub(super) async fn upsert<C>(
     conn: &mut C,
     title: &str,
     range: &RangeInclusive<u32>,
-    created_at: &DateTime<Utc>,
-    updated_at: &DateTime<Utc>,
+    created_at: &Timestamp,
+    updated_at: &Timestamp,
 ) -> anyhow::Result<(Uuid, Vec<u16>)>
 where
     C: Connection<Database = Postgres>,
@@ -55,8 +56,8 @@ async fn insert<'e, E>(
     executor: E,
     title: &str,
     range: &RangeInclusive<u32>,
-    created_at: &DateTime<Utc>,
-    updated_at: &DateTime<Utc>,
+    created_at: &Timestamp,
+    updated_at: &Timestamp,
 ) -> anyhow::Result<Uuid>
 where
     E: Executor<'e, Database = Postgres>,
@@ -67,8 +68,8 @@ where
         title,
         range.start().cast_signed(),
         range.end().cast_signed(),
-        created_at,
-        updated_at,
+        (*created_at).to_sqlx() as _,
+        (*updated_at).to_sqlx() as _,
     )
     .fetch_one(executor)
     .await?;

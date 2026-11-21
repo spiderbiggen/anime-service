@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use std::{borrow::Borrow, collections::HashMap};
 
 use ahash::RandomState;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use reqwest::StatusCode;
 use rss::{Channel, Item};
 use tracing::instrument;
@@ -23,7 +23,7 @@ pub enum Error {
     #[error(transparent)]
     ParseInt(#[from] ParseIntError),
     #[error(transparent)]
-    ParseDate(#[from] chrono::ParseError),
+    ParseDate(#[from] jiff::Error),
     #[error("{0}")]
     ParseTitle(String),
     #[error(transparent)]
@@ -62,7 +62,7 @@ pub struct Download {
     pub resolution: u16,
     pub torrent: String,
     pub file_name: String,
-    pub pub_date: DateTime<Utc>,
+    pub pub_date: Timestamp,
 }
 
 #[derive(Debug)]
@@ -113,7 +113,7 @@ fn build_url(title: Option<&str>) -> Result<Url, Error> {
 #[instrument(err)]
 fn map_item(item: Item) -> Result<Entry, Error> {
     let pub_date = item.pub_date.ok_or(Error::None("rss pub date"))?;
-    let date = DateTime::parse_from_rfc2822(&pub_date)?;
+    let date = jiff::fmt::rfc2822::parse(&pub_date)?.timestamp();
     let file_name = item.title.ok_or(Error::None("rss title"))?;
     let parts = ParsedDownload::try_from(&file_name)?;
 
@@ -125,7 +125,7 @@ fn map_item(item: Item) -> Result<Entry, Error> {
             resolution: parts.resolution,
             file_name,
             torrent: item.link.ok_or(Error::None("rss link"))?,
-            pub_date: date.with_timezone(&Utc),
+            pub_date: date,
         },
     })
 }

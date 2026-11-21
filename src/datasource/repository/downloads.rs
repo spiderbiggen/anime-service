@@ -1,8 +1,9 @@
 use std::cmp::Reverse;
 
 use anyhow::Context;
-use chrono::{DateTime, Utc};
 use futures::StreamExt;
+use jiff::Timestamp;
+use jiff_sqlx::ToSqlx;
 use sqlx::types::Uuid;
 use sqlx::{Connection, Executor, Pool, Postgres, query_file};
 
@@ -144,25 +145,29 @@ where
 pub(super) async fn update_download<'e, E>(
     executor: E,
     id: Uuid,
-    updated_at: &DateTime<Utc>,
+    updated_at: &Timestamp,
 ) -> anyhow::Result<()>
 where
     E: Executor<'e, Database = Postgres>,
 {
-    query_file!("queries/update_download_updated_at.sql", id, updated_at)
-        .execute(executor)
-        .await?;
+    query_file!(
+        "queries/update_download_updated_at.sql",
+        id,
+        (*updated_at).to_sqlx() as _
+    )
+    .execute(executor)
+    .await?;
     Ok(())
 }
 
-pub async fn last_updated<'e, E>(executor: E) -> anyhow::Result<Option<DateTime<Utc>>>
+pub async fn last_updated<'e, E>(executor: E) -> anyhow::Result<Option<Timestamp>>
 where
     E: Executor<'e, Database = Postgres>,
 {
     let record = query_file!("queries/query_last_updated_at.sql")
         .fetch_one(executor)
         .await?;
-    Ok(record.updated_at)
+    Ok(record.updated_at.map(jiff_sqlx::Timestamp::to_jiff))
 }
 
 struct DownloadEntity {
@@ -176,8 +181,8 @@ struct DownloadEntity {
     end_index: Option<u32>,
     extra: Option<String>,
     variant: Variant,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    created_at: Timestamp,
+    updated_at: Timestamp,
 }
 
 async fn get_data_episodes<'e, E>(
@@ -208,8 +213,8 @@ where
             end_index: record.end_index.map(i32::cast_unsigned),
             extra: record.extra,
             variant: record.variant,
-            created_at: record.created_at,
-            updated_at: record.updated_at,
+            created_at: record.created_at.to_jiff(),
+            updated_at: record.updated_at.to_jiff(),
         });
     }
     Ok(rows)
@@ -217,13 +222,13 @@ where
 
 struct RawSingleDownloadResult {
     id: Uuid,
-    updated_at: DateTime<Utc>,
+    updated_at: jiff_sqlx::Timestamp,
     resolutions: Option<Vec<i16>>,
 }
 
 struct SingleDownloadResult {
     id: Uuid,
-    updated_at: DateTime<Utc>,
+    updated_at: Timestamp,
     resolutions: Vec<u16>,
 }
 
@@ -231,7 +236,7 @@ impl From<RawSingleDownloadResult> for SingleDownloadResult {
     fn from(value: RawSingleDownloadResult) -> Self {
         Self {
             id: value.id,
-            updated_at: value.updated_at,
+            updated_at: value.updated_at.to_jiff(),
             resolutions: value
                 .resolutions
                 .into_iter()

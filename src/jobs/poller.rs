@@ -1,10 +1,8 @@
-use std::default::Default;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use anyhow::anyhow;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use tokio::sync::broadcast::Sender;
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, Interval, MissedTickBehavior, interval_at, timeout};
@@ -28,14 +26,14 @@ pub trait NewDownloadsHandler: Sized + Send + Sync {
 pub struct Poller<Handler: NewDownloadsHandler> {
     client: ReqwestClient,
     downloads_handler: Handler,
-    last_update: Arc<Mutex<DateTime<Utc>>>,
+    last_update: Arc<Mutex<Timestamp>>,
 }
 
 impl Poller<PersistentPoller> {
     pub async fn persistent_from_state(state: &AppState) -> anyhow::Result<Self> {
         let last_update = repository::downloads::last_updated(&state.pool)
             .await?
-            .unwrap_or_else(Utc::now);
+            .unwrap_or_else(Timestamp::now);
         Ok(Self::new_with_last_updated_at(
             state.client.clone(),
             PersistentPoller::new(state),
@@ -46,13 +44,13 @@ impl Poller<PersistentPoller> {
 
 impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
     pub fn new(client: ReqwestClient, handler: Handler) -> Self {
-        Self::new_with_last_updated_at(client, handler, DateTime::default())
+        Self::new_with_last_updated_at(client, handler, Timestamp::UNIX_EPOCH)
     }
 
     pub fn new_with_last_updated_at(
         client: ReqwestClient,
         handler: Handler,
-        last_updated_at: DateTime<Utc>,
+        last_updated_at: Timestamp,
     ) -> Self {
         Self {
             client,
@@ -89,7 +87,7 @@ impl<Handler: NewDownloadsHandler + 'static> Poller<Handler> {
     }
 
     #[instrument(skip(self))]
-    async fn poll_nyaa(&self, last_update: DateTime<Utc>) -> anyhow::Result<DateTime<Utc>> {
+    async fn poll_nyaa(&self, last_update: Timestamp) -> anyhow::Result<Timestamp> {
         trace!("fetching anime downloads");
         let groups = get_groups(&self.client).await?;
         let filtered_groups: Vec<_> = groups.filter(|g| g.updated_at > last_update).collect();
@@ -124,13 +122,12 @@ async fn get_groups(
 
 fn interval_at_next_period(period: Duration) -> anyhow::Result<Interval> {
     let start = Instant::now();
-    let now: DateTime<Utc> = Utc::now();
-    let seconds = now.timestamp();
-    let remaining_seconds =
-        period.as_secs().cast_signed() - (seconds % period.as_secs().cast_signed());
-    let minute = DateTime::from_timestamp(seconds + remaining_seconds, 0)
-        .ok_or(anyhow!("failed to create new date time"))?;
-    let offset = (minute - now).to_std()?;
+    let now = Timestamp::now();
+    let seconds = now.as_second();
+    let period_seconds = period.as_secs().cast_signed();
+    let remaining_seconds = period_seconds - (seconds % period_seconds);
+    let next_period = Timestamp::from_second(seconds + remaining_seconds)?;
+    let offset = now.duration_until(next_period).unsigned_abs();
     Ok(interval_at(start + offset, period))
 }
 

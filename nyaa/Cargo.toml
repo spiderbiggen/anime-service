@@ -10,7 +10,7 @@ workspace = true
 
 [dependencies]
 ahash = "0.8.11"
-chrono = "0.4"
+jiff = "1"
 reqwest = { version = "0.13", features = ["brotli"] }
 rss = "2"
 thiserror = "2"
