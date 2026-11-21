@@ -5,6 +5,10 @@
   ],
   "packageRules": [
     {
+      "description": "Wait a few days before updating anything to avoid freshly published (or yanked) releases. Security updates ignore this.",
+      "minimumReleaseAge": "3 days"
+    },
+    {
       "matchUpdateTypes": [
         "minor",
         "patch",
