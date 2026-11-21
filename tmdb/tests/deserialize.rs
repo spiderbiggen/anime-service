@@ -4,7 +4,7 @@
 use jiff::civil::date;
 use tmdb::ListResponse;
 use tmdb::search::TvSearchResult;
-use tmdb::tv::{ExternalIds, TvDetails};
+use tmdb::tv::{AlternativeTitle, ExternalIds, TvDetails, romaji_title};
 
 #[test]
 fn parses_a_full_search_result() {
@@ -98,4 +98,53 @@ fn an_invalid_date_is_an_error() {
     );
 
     assert!(result.is_err());
+}
+
+fn alternative_titles() -> Vec<AlternativeTitle> {
+    #[derive(serde::Deserialize)]
+    struct Response {
+        results: Vec<AlternativeTitle>,
+    }
+    serde_json::from_str::<Response>(include_str!("fixtures/alternative_titles.json"))
+        .expect("fixture parses")
+        .results
+}
+
+#[test]
+fn parses_alternative_titles() {
+    let titles = alternative_titles();
+
+    assert_eq!(titles.len(), 5);
+    assert_eq!(titles[0].title, "示例动画");
+    assert_eq!(titles[0].kind, "");
+    assert_eq!(titles[2].kind, "Hepburn Romanization");
+}
+
+#[test]
+fn the_romaji_title_ignores_case_and_other_romanizations() {
+    // The fixture has a Hepburn romanization before the `romaji` entry.
+    assert_eq!(
+        romaji_title(&alternative_titles()),
+        Some("Sanpuru no Anime")
+    );
+
+    let upper: Vec<AlternativeTitle> =
+        serde_json::from_str(r#"[{ "iso_3166_1": "JP", "title": "Upper", "type": "ROMAJI" }]"#)
+            .expect("parses");
+    assert_eq!(romaji_title(&upper), Some("Upper"));
+}
+
+#[test]
+fn no_romaji_title_when_there_is_none() {
+    let titles: Vec<AlternativeTitle> = serde_json::from_str(
+        r#"[
+            { "iso_3166_1": "JP", "title": "Hepburn", "type": "Hepburn Romanization" },
+            { "iso_3166_1": "JP", "title": "", "type": "Romaji" },
+            { "iso_3166_1": "US", "title": "English" }
+        ]"#,
+    )
+    .expect("parses");
+
+    assert_eq!(romaji_title(&titles), None);
+    assert_eq!(romaji_title(&[]), None);
 }

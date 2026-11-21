@@ -66,16 +66,21 @@ pub(crate) mod shows {
         State(tmdb): State<TmdbClient>,
     ) -> Result<Json<Show>, Error> {
         let language = params.language.as_deref();
-        let (details, external_ids) = tokio::join!(
+        let (details, external_ids, alternative_titles) = tokio::join!(
             tmdb::tv::details(&tmdb, id, language),
-            tmdb::tv::external_ids(&tmdb, id)
+            tmdb::tv::external_ids(&tmdb, id),
+            tmdb::tv::alternative_titles(&tmdb, id)
         );
         let details = details?;
-        // The TVDB id is a nice-to-have, so a failure here must not fail the request.
+        // The TVDB id and the romaji name are nice-to-haves, so a failure here must not fail the
+        // request.
         let external_ids = external_ids
             .inspect_err(|error| warn!(%error, id, "failed to fetch external ids"))
             .ok();
-        Ok(Json(Show::new(details, external_ids)))
+        let alternative_titles = alternative_titles
+            .inspect_err(|error| warn!(%error, id, "failed to fetch alternative titles"))
+            .unwrap_or_default();
+        Ok(Json(Show::new(details, external_ids, &alternative_titles)))
     }
 }
 

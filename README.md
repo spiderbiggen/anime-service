@@ -10,7 +10,7 @@ REST endpoints (everything except the health check is under `/v1`):
 |-------------------------------------------------------|-----------------------------------------------|
 | `GET /health`                                         | Health check (204)                            |
 | `GET /v1/shows?query=`                                | Search TV shows (also `page`, `language`)     |
-| `GET /v1/shows/{id}`                                  | Show details by TMDB id, with `tvdb_id`       |
+| `GET /v1/shows/{id}`                                  | Show details by TMDB id, with `tvdb_id` and `romaji_name` |
 | `GET /v1/downloads`                                   | Latest downloads (25), all variants           |
 | `GET /v1/downloads/{batches,episodes,movies}`         | Same, for one variant                         |
 | `GET /v1/downloads[/{batches,episodes,movies}]/updates` | SSE stream of new downloads                 |
@@ -21,7 +21,7 @@ Live updates are Server-Sent Events: each new release arrives as an event named 
 
 ## Show matching
 
-When a new release arrives, the service looks its title up on TMDB (the top result tagged Animation) and attaches the show to the download as a `show` object with `tmdb_id`, `tvdb_id`, `name`, `original_name` (the name in the original language), `overview`, `poster_url` and `backdrop_url`. It appears in the downloads endpoints and in the SSE events. Matching is best-effort and takes at most about 5 seconds, so a release is never held back: if TMDB is slow or has no match, the download is sent without a `show`. Titles are only looked up when a new release for them arrives, so older downloads get a `show` later.
+When a new release arrives, the service looks its title up on TMDB (the top result tagged Animation) and attaches the show to the download as a `show` object with `tmdb_id`, `tvdb_id`, `name`, `original_name` (the name in the original language), `romaji_name` (the romanized Japanese name, which release titles usually match; only when TMDB has one), `overview`, `poster_url` and `backdrop_url`. It appears in the downloads endpoints and in the SSE events. Matching is best-effort and takes at most about 5 seconds, so a release is never held back: if TMDB is slow or has no match, the download is sent without a `show`. Titles are only looked up when a new release for them arrives, so older downloads get a `show` later.
 
 Matches live in the `title_match` table and show data in the `show` table. A title with no match is retried after a week, and show data older than 30 days is refreshed the next time a release for it arrives. To fix a wrong match, add a manual row, which the resolver never overwrites:
 
