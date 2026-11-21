@@ -26,6 +26,7 @@ CI (`.github/workflows/ci.yml`) runs fmt check, tests, and clippy. Run all three
 - Prefer iterators over manual loops, unless the iterator chain becomes hard to read.
 - Write good doc comments (`///`) on public items. Keep inline code comments minimal and only for non-obvious "why".
 - Use `tracing` (`#[instrument]`, `info!`, etc.), not `println!`.
+- The Rust toolchain is pinned in `rust-toolchain.toml` and CI installs exactly that version. Renovate bumps it in its own PR, which is where new clippy lints should be fixed. Don't switch CI back to floating `stable`.
 
 ## Database
 
