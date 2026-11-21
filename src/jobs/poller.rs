@@ -11,6 +11,7 @@ use tracing::{debug, info, instrument, trace};
 use datasource::repository;
 
 use crate::datasource;
+use crate::jobs::resolver::ShowResolver;
 use crate::models::DownloadGroup;
 use crate::state::{AppState, DBPool, ReqwestClient};
 
@@ -135,6 +136,7 @@ fn interval_at_next_period(period: Duration) -> anyhow::Result<Interval> {
 pub struct PersistentPoller {
     database: DBPool,
     sender: Sender<DownloadGroup>,
+    resolver: ShowResolver,
 }
 
 impl PersistentPoller {
@@ -143,6 +145,7 @@ impl PersistentPoller {
         Self {
             database: state.pool.clone(),
             sender: state.downloads_channel.clone(),
+            resolver: ShowResolver::new(state.tmdb.clone(), state.pool.clone()),
         }
     }
 
@@ -153,8 +156,9 @@ impl PersistentPoller {
 }
 
 impl NewDownloadsHandler for PersistentPoller {
-    async fn handle_new_downloads(&self, groups: Vec<DownloadGroup>) -> anyhow::Result<()> {
+    async fn handle_new_downloads(&self, mut groups: Vec<DownloadGroup>) -> anyhow::Result<()> {
         self.save_downloads(&groups).await?;
+        self.resolver.attach(&mut groups).await;
         for group in groups {
             let _ = self.sender.send(group);
         }

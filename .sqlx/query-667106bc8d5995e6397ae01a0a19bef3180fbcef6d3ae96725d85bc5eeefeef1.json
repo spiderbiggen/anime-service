@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT tm.title AS \"title!\",\n       s.data   AS \"data!: sqlx::types::Json<crate::models::ShowSummary>\"\nFROM title_match tm\n         JOIN show s ON s.tmdb_id = tm.tmdb_id\nWHERE tm.title = ANY ($1)\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "title!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "title_match",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "data!: sqlx::types::Json<crate::models::ShowSummary>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "show",
+            "name": "data"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "667106bc8d5995e6397ae01a0a19bef3180fbcef6d3ae96725d85bc5eeefeef1"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT tm.tmdb_id AS \"tmdb_id!\"\nFROM title_match tm\n         LEFT JOIN show s ON s.tmdb_id = tm.tmdb_id\nWHERE tm.title = ANY ($1)\n  AND tm.tmdb_id IS NOT NULL\n  AND (s.tmdb_id IS NULL OR s.fetched_at < now() - INTERVAL '30 days')\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "tmdb_id!",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "title_match",
+            "name": "tmdb_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "04c79d2d12aaa5d4bb8393dc54d14938557b8a3574025ce13f4ed39230894d84"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO title_match (title, tmdb_id, source, checked_at)\nVALUES ($1, $2, 'auto', now())\nON CONFLICT (title) DO UPDATE\n    SET tmdb_id    = EXCLUDED.tmdb_id,\n        checked_at = now()\nWHERE title_match.source = 'auto'\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "39ceb703f176d586f4475b44271e9c0c963292b592075c9ede85f38c700ca4c1"
+}
