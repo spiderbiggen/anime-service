@@ -14,7 +14,7 @@ use tracing::info;
 
 use state::AppState;
 
-use crate::controllers::rest::anime;
+use crate::controllers::rest::shows;
 
 mod controllers;
 mod datasource;
@@ -64,8 +64,8 @@ pub fn v1_routes() -> Router<AppState> {
         .nest(
             "/shows",
             AxumRouter::new()
-                .route("/", get(anime::find))
-                .route("/{id}", get(anime::by_id)),
+                .route("/", get(shows::search))
+                .route("/{id}", get(shows::by_id)),
         )
         .nest(
             "/downloads",

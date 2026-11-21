@@ -1,8 +1,9 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use axum::extract::FromRef;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
+use tmdb::TmdbClient;
 use tokio::sync::broadcast;
 use url::Url;
 
@@ -13,15 +14,19 @@ pub struct AppState {
     pub client: ReqwestClient,
     pub pool: DBPool,
     pub downloads_channel: broadcast::Sender<DownloadGroup>,
+    pub tmdb: TmdbClient,
 }
 
 impl AppState {
     pub fn new() -> Result<Self> {
         let (tx, _) = broadcast::channel(32);
+        let client = reqwest::Client::new();
+        let tmdb = create_tmdb_client(client.clone())?;
         Ok(Self {
-            client: reqwest::Client::new(),
+            client,
             pool: create_db_pool()?,
             downloads_channel: tx,
+            tmdb,
         })
     }
 }
@@ -31,6 +36,12 @@ pub type ReqwestClient = reqwest::Client;
 impl FromRef<AppState> for ReqwestClient {
     fn from_ref(input: &AppState) -> Self {
         input.client.clone()
+    }
+}
+
+impl FromRef<AppState> for TmdbClient {
+    fn from_ref(input: &AppState) -> Self {
+        input.tmdb.clone()
     }
 }
 
@@ -74,4 +85,17 @@ pub fn create_db_pool() -> Result<DBPool> {
         .max_connections(2)
         .connect_lazy(url.as_ref())?;
     Ok(pool)
+}
+
+// No `Debug` derive: this holds a secret.
+#[derive(Deserialize)]
+struct TmdbConfig {
+    access_token: String,
+}
+
+fn create_tmdb_client(http: reqwest::Client) -> Result<TmdbClient> {
+    let config: TmdbConfig = envy::prefixed("TMDB_")
+        .from_env()
+        .context("TMDB_ACCESS_TOKEN must be set to a TMDB API read access token")?;
+    Ok(TmdbClient::new(http, config.access_token)?)
 }

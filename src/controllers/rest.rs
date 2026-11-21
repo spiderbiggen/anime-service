@@ -23,28 +23,59 @@ async fn find_downloads(
     Ok(downloads)
 }
 
-pub(crate) mod anime {
-    use crate::errors::Error;
-    use crate::models;
-    use crate::state::ReqwestClient;
+pub(crate) mod shows {
     use axum::Json;
-    use axum::extract::{Path, State};
+    use axum::extract::{Path, Query, State};
+    use serde::Deserialize;
+    use tmdb::TmdbClient;
+    use tmdb::search::TvSearchParams;
+    use tracing::warn;
+
+    use crate::errors::Error;
+    use crate::models::{Page, Show, ShowSearchResult};
+
+    #[derive(Debug, Deserialize)]
+    pub(crate) struct SearchQuery {
+        query: String,
+        page: Option<u32>,
+        language: Option<String>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    pub(crate) struct LanguageQuery {
+        language: Option<String>,
+    }
+
+    pub(crate) async fn search(
+        Query(params): Query<SearchQuery>,
+        State(tmdb): State<TmdbClient>,
+    ) -> Result<Json<Page<ShowSearchResult>>, Error> {
+        let params = TvSearchParams {
+            query: params.query,
+            page: params.page,
+            language: params.language,
+            ..TvSearchParams::default()
+        };
+        let page = tmdb::search::tv(&tmdb, &params).await?;
+        Ok(Json(page.into()))
+    }
 
     pub(crate) async fn by_id(
         Path(id): Path<u32>,
-        State(reqwest): State<ReqwestClient>,
-    ) -> Result<Json<models::Show>, Error> {
-        let anime = kitsu::anime::single(&reqwest, id).await?;
-        let show = anime.data.try_into()?;
-        Ok(Json(show))
-    }
-
-    pub(crate) async fn find(
-        State(reqwest): State<ReqwestClient>,
-    ) -> Result<Json<Vec<models::Show>>, Error> {
-        let anime = kitsu::anime::collection(&reqwest).await?;
-        let show: Result<Vec<_>, _> = anime.data.into_iter().map(TryInto::try_into).collect();
-        Ok(Json(show?))
+        Query(params): Query<LanguageQuery>,
+        State(tmdb): State<TmdbClient>,
+    ) -> Result<Json<Show>, Error> {
+        let language = params.language.as_deref();
+        let (details, external_ids) = tokio::join!(
+            tmdb::tv::details(&tmdb, id, language),
+            tmdb::tv::external_ids(&tmdb, id)
+        );
+        let details = details?;
+        // The TVDB id is a nice-to-have, so a failure here must not fail the request.
+        let external_ids = external_ids
+            .inspect_err(|error| warn!(%error, id, "failed to fetch external ids"))
+            .ok();
+        Ok(Json(Show::new(details, external_ids)))
     }
 }
 
