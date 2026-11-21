@@ -34,4 +34,4 @@ Pushing a `v*.*.*` tag builds musl binaries (amd64, arm64) and publishes a Docke
 
 ## Layout
 
-`nyaa/` and `kitsu/` are the API clients, `proto/` holds the gRPC definitions, and the root crate is the service itself. There is no TMDB client on `master` yet. See `AGENTS.md` for the file-level details.
+`nyaa/` and `kitsu/` are the API clients, `proto/` holds the gRPC definitions, and the root crate is the service itself. See `AGENTS.md` for the file-level details.
