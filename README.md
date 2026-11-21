@@ -46,6 +46,14 @@ For testing a consumer without waiting for Nyaa to publish something, two option
 POLL_INTERVAL_SECS=60 POLL_LOOKBACK_SECS=86400 cargo run --bin anime-service
 ```
 
+To test a consumer of the SSE stream without Nyaa, TMDB or a database, run the mock server instead of the service:
+
+```sh
+cargo run --bin mock-stream -- [port] [seconds between events] [seconds between keep-alives]
+```
+
+It listens on `127.0.0.1:8000` by default and serves `/v1/downloads/updates` (and `/health`). It sends an event right away and then every 10 seconds, cycling through an episode with a `show`, an episode without a 1080p download, an episode with `decimal`, `version` and `extra`, a batch, a movie and an episode without a `show`. The events are built from the service's own models, so they have the real shape, and every third event is split across two chunks to exercise the client's SSE parser.
+
 Pushing a `v*.*.*` tag builds musl binaries (amd64, arm64) and publishes a Docker image to GHCR.
 
 ## Layout
