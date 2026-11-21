@@ -102,16 +102,22 @@ impl ShowResolver {
 
     /// Fetches the details of a show and stores its summary.
     async fn refresh_show(&self, id: u32) -> anyhow::Result<()> {
-        let (details, external_ids) = tokio::join!(
+        let (details, external_ids, alternative_titles) = tokio::join!(
             tmdb::tv::details(&self.tmdb, id, None),
-            tmdb::tv::external_ids(&self.tmdb, id)
+            tmdb::tv::external_ids(&self.tmdb, id),
+            tmdb::tv::alternative_titles(&self.tmdb, id)
         );
         let details = details?;
-        // The TVDB id is a nice-to-have, so a failure here must not discard the show.
+        // The TVDB id and the romaji name are nice-to-haves, so a failure here must not discard
+        // the show.
         let external_ids = external_ids
             .inspect_err(|error| warn!(%error, id, "failed to fetch external ids"))
             .ok();
-        shows::upsert_show(&self.pool, id, &ShowSummary::new(details, external_ids)).await?;
+        let alternative_titles = alternative_titles
+            .inspect_err(|error| warn!(%error, id, "failed to fetch alternative titles"))
+            .unwrap_or_default();
+        let summary = ShowSummary::new(details, external_ids, &alternative_titles);
+        shows::upsert_show(&self.pool, id, &summary).await?;
         Ok(())
     }
 }

@@ -103,3 +103,56 @@ pub async fn details(client: &TmdbClient, id: u32, language: Option<&str>) -> Re
 pub async fn external_ids(client: &TmdbClient, id: u32) -> Result<ExternalIds> {
     client.get(&format!("tv/{id}/external_ids"), &[]).await
 }
+
+/// An alternative title of a show, such as a translation or a romanization.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AlternativeTitle {
+    /// The ISO 3166-1 code of the country the title is used in.
+    #[serde(default)]
+    pub iso_3166_1: String,
+    /// The title itself.
+    pub title: String,
+    /// What kind of title this is, such as `Romaji` or `Kana`. It is free text, empty for most
+    /// titles, and its casing is not consistent.
+    #[serde(default, rename = "type")]
+    pub kind: String,
+}
+
+impl AlternativeTitle {
+    /// Returns whether this is the romaji (romanized Japanese) title, as opposed to another
+    /// romanization such as Hepburn.
+    #[must_use]
+    pub fn is_romaji(&self) -> bool {
+        self.kind.eq_ignore_ascii_case("romaji")
+    }
+}
+
+/// Returns the first romaji title, if there is one.
+///
+/// Release titles usually match it, unlike the localized name.
+#[must_use]
+pub fn romaji_title(titles: &[AlternativeTitle]) -> Option<&str> {
+    titles
+        .iter()
+        .find(|title| title.is_romaji() && !title.title.is_empty())
+        .map(|title| title.title.as_str())
+}
+
+#[derive(Deserialize)]
+struct AlternativeTitles {
+    #[serde(default)]
+    results: Vec<AlternativeTitle>,
+}
+
+/// Fetches the alternative titles of a TV show.
+///
+/// # Errors
+///
+/// Returns an error if the request fails, TMDB answers with a non-success status (404 when the
+/// show does not exist), or the response cannot be parsed.
+pub async fn alternative_titles(client: &TmdbClient, id: u32) -> Result<Vec<AlternativeTitle>> {
+    let response: AlternativeTitles = client
+        .get(&format!("tv/{id}/alternative_titles"), &[])
+        .await?;
+    Ok(response.results)
+}

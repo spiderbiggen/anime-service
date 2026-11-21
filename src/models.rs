@@ -5,7 +5,7 @@ use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
 use tmdb::images::{BackdropSize, PosterSize, backdrop_url, poster_url};
 use tmdb::search::TvSearchResult;
-use tmdb::tv::{ExternalIds, TvDetails};
+use tmdb::tv::{AlternativeTitle, ExternalIds, TvDetails, romaji_title};
 
 /// A page of results.
 #[derive(Serialize, Clone, Debug)]
@@ -88,6 +88,9 @@ pub struct Show {
     pub tvdb_id: Option<u32>,
     pub name: String,
     pub original_name: String,
+    /// The romanized Japanese name, when TMDB has one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub romaji_name: Option<String>,
     pub overview: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
@@ -120,6 +123,10 @@ pub struct ShowSummary {
     /// existed, until they are refreshed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub original_name: Option<String>,
+    /// The romanized Japanese name, which release titles usually match. Missing when TMDB has
+    /// none, and for summaries stored before this field existed, until they are refreshed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub romaji_name: Option<String>,
     pub overview: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub poster_url: Option<String>,
@@ -129,12 +136,17 @@ pub struct ShowSummary {
 
 impl ShowSummary {
     #[must_use]
-    pub fn new(details: TvDetails, external_ids: Option<ExternalIds>) -> Self {
+    pub fn new(
+        details: TvDetails,
+        external_ids: Option<ExternalIds>,
+        alternative_titles: &[AlternativeTitle],
+    ) -> Self {
         Self {
             tmdb_id: details.id,
             tvdb_id: external_ids.and_then(|ids| ids.tvdb_id),
             name: details.name,
             original_name: Some(details.original_name).filter(|name| !name.is_empty()),
+            romaji_name: romaji_title(alternative_titles).map(str::to_owned),
             overview: details.overview,
             poster_url: poster(details.poster_path),
             backdrop_url: backdrop(details.backdrop_path),
@@ -144,12 +156,17 @@ impl ShowSummary {
 
 impl Show {
     #[must_use]
-    pub fn new(details: TvDetails, external_ids: Option<ExternalIds>) -> Self {
+    pub fn new(
+        details: TvDetails,
+        external_ids: Option<ExternalIds>,
+        alternative_titles: &[AlternativeTitle],
+    ) -> Self {
         Self {
             id: details.id,
             tvdb_id: external_ids.and_then(|ids| ids.tvdb_id),
             name: details.name,
             original_name: details.original_name,
+            romaji_name: romaji_title(alternative_titles).map(str::to_owned),
             overview: details.overview,
             status: details.status,
             first_air_date: details.first_air_date,
@@ -289,6 +306,16 @@ mod tests {
         .expect("valid details")
     }
 
+    fn titles() -> Vec<AlternativeTitle> {
+        serde_json::from_str(
+            r#"[
+                { "iso_3166_1": "JP", "title": "Sanpuru", "type": "Hepburn Romanization" },
+                { "iso_3166_1": "JP", "title": "Sanpuru Shou", "type": "Romaji" }
+            ]"#,
+        )
+        .expect("valid titles")
+    }
+
     fn external_ids(tvdb_id: Option<u32>) -> ExternalIds {
         ExternalIds {
             id: 7,
@@ -299,7 +326,7 @@ mod tests {
 
     #[test]
     fn show_uses_the_tvdb_id_and_builds_image_urls() {
-        let show = Show::new(details(), Some(external_ids(Some(99))));
+        let show = Show::new(details(), Some(external_ids(Some(99))), &titles());
 
         assert_eq!(show.tvdb_id, Some(99));
         assert_eq!(
@@ -313,12 +340,13 @@ mod tests {
 
     #[test]
     fn show_summary_keeps_only_what_downloads_need() {
-        let summary = ShowSummary::new(details(), Some(external_ids(Some(99))));
+        let summary = ShowSummary::new(details(), Some(external_ids(Some(99))), &titles());
 
         assert_eq!(summary.tmdb_id, 7);
         assert_eq!(summary.tvdb_id, Some(99));
         assert_eq!(summary.name, "Sample");
         assert_eq!(summary.original_name.as_deref(), Some("サンプル"));
+        assert_eq!(summary.romaji_name.as_deref(), Some("Sanpuru Shou"));
         assert_eq!(
             summary.poster_url.as_deref(),
             Some("https://image.tmdb.org/t/p/w500/p.jpg")
@@ -328,7 +356,7 @@ mod tests {
 
     #[test]
     fn show_summary_survives_a_json_round_trip() {
-        let summary = ShowSummary::new(details(), None);
+        let summary = ShowSummary::new(details(), None, &[]);
 
         let json = serde_json::to_value(&summary).expect("serializes");
         assert!(json.get("tvdb_id").is_none());
@@ -339,25 +367,41 @@ mod tests {
     }
 
     #[test]
+    fn show_details_include_the_romaji_name_only_when_there_is_one() {
+        let with = Show::new(details(), None, &titles());
+        let without = Show::new(details(), None, &[]);
+
+        assert_eq!(with.romaji_name.as_deref(), Some("Sanpuru Shou"));
+        assert_eq!(without.romaji_name, None);
+        let json = serde_json::to_value(&without).expect("serializes");
+        assert!(json.get("romaji_name").is_none());
+    }
+
+    #[test]
     fn summaries_stored_before_original_name_existed_still_load() {
         let stored = r#"{ "tmdb_id": 7, "name": "Sample", "overview": "o" }"#;
 
         let summary: ShowSummary = serde_json::from_str(stored).expect("old rows still load");
 
         assert_eq!(summary.original_name, None);
+        assert_eq!(summary.romaji_name, None);
         let json = serde_json::to_value(&summary).expect("serializes");
         assert!(json.get("original_name").is_none());
+        assert!(json.get("romaji_name").is_none());
     }
 
     #[test]
     fn show_without_external_ids_has_no_tvdb_id() {
-        assert_eq!(Show::new(details(), None).tvdb_id, None);
-        assert_eq!(Show::new(details(), Some(external_ids(None))).tvdb_id, None);
+        assert_eq!(Show::new(details(), None, &[]).tvdb_id, None);
+        assert_eq!(
+            Show::new(details(), Some(external_ids(None)), &[]).tvdb_id,
+            None
+        );
     }
 
     #[test]
     fn show_skips_missing_values_when_serialized() {
-        let json = serde_json::to_value(Show::new(details(), None)).expect("serializes");
+        let json = serde_json::to_value(Show::new(details(), None, &[])).expect("serializes");
 
         assert!(json.get("tvdb_id").is_none());
         assert!(json.get("backdrop_url").is_none());
