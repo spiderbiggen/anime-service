@@ -107,19 +107,16 @@ pub mod anime {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```no_run
+    /// use kitsu::anime;
     /// use reqwest::Client;
-    /// use kitsu_rs::anime;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::new();
-    ///     let anime_id = 1; // Replace with the desired anime ID
-    ///     match anime::single(&client, anime_id).await {
-    ///         Ok(anime) => println!("Fetched anime: {:?}", anime),
-    ///         Err(err) => eprintln!("Error fetching anime: {}", err),
-    ///     }
-    /// }
+    /// # async fn example() -> kitsu::Result<()> {
+    /// let client = Client::new();
+    /// let anime = anime::single(&client, 1).await?;
+    /// println!("Fetched anime: {:?}", anime.data);
+    /// # Ok(())
+    /// # }
     /// ```
     pub async fn single(client: &reqwest::Client, id: u32) -> Result<Single<models::Anime>> {
         let url: Url = "https://kitsu.io/api/edge/anime/".parse()?;
@@ -140,18 +137,16 @@ pub mod anime {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```no_run
+    /// use kitsu::anime;
     /// use reqwest::Client;
-    /// use kitsu_rs::anime;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let client = Client::new();
-    ///     match anime::collection(&client).await {
-    ///         Ok(animes) => println!("Fetched animes: {:?}", animes),
-    ///         Err(err) => eprintln!("Error fetching animes: {}", err),
-    ///     }
-    /// }
+    /// # async fn example() -> kitsu::Result<()> {
+    /// let client = Client::new();
+    /// let animes = anime::collection(&client).await?;
+    /// println!("Fetched {} animes", animes.data.len());
+    /// # Ok(())
+    /// # }
     /// ```
     pub async fn collection(client: &reqwest::Client) -> Result<Collection<models::Anime>> {
         let uri = Url::parse("https://kitsu.io/api/edge/anime/")?;
