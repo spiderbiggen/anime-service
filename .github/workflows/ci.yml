@@ -50,8 +50,14 @@ jobs:
         run: cargo clippy --locked --all-targets --workspace -- -D warnings
 
   test:
-    runs-on: ubuntu-latest
-    name: stable / test
+    # Also run on arm64: the release workflow builds for it, and C/asm dependencies
+    # (aws-lc-sys, ring) are where architecture-specific breakage tends to appear.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} / stable / test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install protoc
