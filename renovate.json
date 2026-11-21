@@ -5,6 +5,13 @@
   ],
   "packageRules": [
     {
+      "description": "Wait a few days before updating crates to avoid freshly published (or yanked) releases. Security updates ignore this.",
+      "matchDatasources": [
+        "crate"
+      ],
+      "minimumReleaseAge": "3 days"
+    },
+    {
       "matchUpdateTypes": [
         "minor",
         "patch",
