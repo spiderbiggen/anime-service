@@ -40,6 +40,12 @@ cargo run --bin anime-service     # poller + REST/SSE
 
 Needs Postgres. sqlx checks queries at compile time: set `DATABASE_URL`, or rely on the offline cache in `.sqlx/` (refresh it with `cargo sqlx prepare --workspace`).
 
+For testing a consumer without waiting for Nyaa to publish something, two optional settings control the poller: `POLL_INTERVAL_SECS` (default 300) is how often Nyaa is polled, aligned to multiples of the interval, and `POLL_LOOKBACK_SECS` makes the first poll replay the releases published within that many seconds instead of continuing after the newest stored one. Replayed releases that are already stored are left alone, and all of them are broadcast over SSE, so this gives a consumer a burst of events within a minute (limited to what Nyaa's feed still lists):
+
+```sh
+POLL_INTERVAL_SECS=60 POLL_LOOKBACK_SECS=86400 cargo run --bin anime-service
+```
+
 Pushing a `v*.*.*` tag builds musl binaries (amd64, arm64) and publishes a Docker image to GHCR.
 
 ## Layout
