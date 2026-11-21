@@ -53,10 +53,10 @@ jobs:
           sudo apt install -y musl-tools musl-dev
 
       - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
-        with:
-          toolchain: stable
-          targets: ${{ matrix.info.target }}
+        # Version and components come from rust-toolchain.toml
+        run: |
+          rustup toolchain install --profile minimal
+          rustup target add ${{ matrix.info.target }}
 
       - name: Cargo Build
         run: cargo build --all-targets --target=${{ matrix.info.target }} --locked --release
