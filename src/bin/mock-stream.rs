@@ -215,10 +215,22 @@ fn episode(episode: u32) -> DownloadVariant {
     })
 }
 
-/// One release per interesting case. Consumers that skip releases without a 1080p download
-/// should skip the second one.
+/// One release per interesting case, starting with one that has everything. Consumers that skip
+/// releases without a 1080p download should skip the third one.
 fn cases(now: Timestamp) -> Vec<DownloadGroup> {
     vec![
+        group(
+            "Sample Show",
+            DownloadVariant::Episode(Episode {
+                episode: 10,
+                decimal: Some(5),
+                version: Some(2),
+                extra: Some("END".into()),
+            }),
+            &[480, 720, 1080],
+            Some(show()),
+            now,
+        ),
         group(
             "Sample Show",
             episode(7),
@@ -271,6 +283,22 @@ mod tests {
         }
         assert!(cases.iter().any(|case| case.get("show").is_some()));
         assert!(cases.iter().any(|case| case.get("show").is_none()));
+        assert!(
+            cases.iter().any(|case| {
+                let resolutions: Vec<_> = case["downloads"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|download| download["resolution"].as_u64())
+                    .collect();
+                resolutions == [Some(480), Some(720), Some(1080)]
+                    && case["decimal"] == 5
+                    && case["version"] == 2
+                    && case["extra"] == "END"
+                    && case.get("show").is_some()
+            }),
+            "missing an episode with every field, a show and all three resolutions"
+        );
         assert!(
             cases
                 .iter()

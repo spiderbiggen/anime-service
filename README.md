@@ -52,7 +52,7 @@ To test a consumer of the SSE stream without Nyaa, TMDB or a database, run the m
 cargo run --bin mock-stream -- [port] [seconds between events] [seconds between keep-alives]
 ```
 
-It listens on `127.0.0.1:8000` by default and serves `/v1/downloads/updates` (and `/health`). It sends an event right away and then every 10 seconds, cycling through an episode with a `show`, an episode without a 1080p download, an episode with `decimal`, `version` and `extra`, a batch, a movie and an episode without a `show`. The events are built from the service's own models, so they have the real shape, and every third event is split across two chunks to exercise the client's SSE parser.
+It listens on `127.0.0.1:8000` by default and serves `/v1/downloads/updates` (and `/health`). It sends an event right away and then every 10 seconds, cycling through an episode with every field (`decimal`, `version`, `extra`, a `show` and 480p, 720p and 1080p downloads), a plain episode with a `show` and all three sizes, an episode without a 1080p download, an episode with `decimal`, `version` and `extra` but only 1080p, a batch, a movie and an episode without a `show`. The events are built from the service's own models, so they have the real shape, and every third event is split across two chunks to exercise the client's SSE parser.
 
 Pushing a `v*.*.*` tag builds musl binaries (amd64, arm64) and publishes a Docker image to GHCR.
 
