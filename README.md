@@ -32,4 +32,4 @@ Pushing a `v*.*.*` tag builds musl binaries (amd64, arm64) and publishes a Docke
 
 ## Layout
 
-`nyaa/` and `kitsu/` are the API clients and the root crate is the service itself. See `AGENTS.md` for the file-level details.
+`nyaa/`, `kitsu/` and `tmdb/` are the API clients and the root crate is the service itself. See `AGENTS.md` for the file-level details.
