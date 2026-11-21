@@ -4,13 +4,17 @@ Polls [Nyaa](https://nyaa.si) for new anime releases, stores them in PostgreSQL,
 
 ## API
 
-| Endpoint                                | Description                          |
-|-----------------------------------------|--------------------------------------|
-| `GET /health`                           | Health check (204)                   |
-| `GET /v1/anime`, `GET /v1/anime/{id}`   | Show metadata from Kitsu             |
-| `GET /v1/downloads?title=`              | All downloads, optionally by title   |
-| `GET /v1/downloads/updates`             | SSE stream of new downloads          |
-| `GET /v1/downloads/{batch,episode,movie}` and `.../updates` | Same, per variant |
+REST endpoints (everything except the health check is under `/v1`):
+
+| Endpoint                                              | Description                                   |
+|-------------------------------------------------------|-----------------------------------------------|
+| `GET /health`                                         | Health check (204)                            |
+| `GET /v1/shows`, `GET /v1/shows/{id}`                 | Show metadata from Kitsu                      |
+| `GET /v1/downloads`                                   | Latest downloads (25), all variants           |
+| `GET /v1/downloads/{batches,episodes,movies}`         | Same, for one variant                         |
+| `GET /v1/downloads[/{batches,episodes,movies}]/updates` | SSE stream of new downloads                 |
+
+The downloads list endpoints (not `/updates`) accept an optional case-insensitive `?title=` prefix filter.
 
 gRPC: `Downloads.Subscribe` (server-streaming), see `proto/protos/api.v2.proto`.
 
@@ -30,4 +34,4 @@ Pushing a `v*.*.*` tag builds musl binaries (amd64, arm64) and publishes a Docke
 
 ## Layout
 
-`nyaa/` and `kitsu/` are the API clients, `proto/` holds the gRPC definitions, and the root crate is the service itself. `tmdb/` is an unfinished client outside the workspace. See `AGENTS.md` for the file-level details.
+`nyaa/` and `kitsu/` are the API clients, `proto/` holds the gRPC definitions, and the root crate is the service itself. There is no TMDB client on `master` yet. See `AGENTS.md` for the file-level details.
