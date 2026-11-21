@@ -15,10 +15,10 @@ CI (`.github/workflows/ci.yml`) runs fmt check, tests, and clippy. Run all three
 
 ## Layout
 
-- Cargo workspace: root crate `anime-service` plus `nyaa`, `kitsu`, `proto`.
-- `src/controllers/{rest,grpc}.rs` handle transport; `src/datasource/repository/` holds DB access; `src/jobs/poller.rs` is the Nyaa poller; `src/state.rs` holds `AppState`.
-- `src/bin/`: `anime-service` (production), `combined-debug` (fast polling), `streams` (no DB).
-- Router wiring and the shared port-8000 HTTP/gRPC split live in `src/lib.rs`.
+- Cargo workspace: root crate `anime-service` plus `nyaa` and `kitsu`.
+- `src/controllers/rest.rs` handles transport (REST and SSE); `src/datasource/repository/` holds DB access; `src/jobs/poller.rs` is the Nyaa poller; `src/state.rs` holds `AppState`.
+- `src/bin/anime-service.rs` is the only binary.
+- Router wiring lives in `src/lib.rs`.
 
 ## Conventions
 
@@ -36,10 +36,6 @@ CI (`.github/workflows/ci.yml`) runs fmt check, tests, and clippy. Run all three
 - Dates and times use `jiff` (`jiff::Timestamp`), not `chrono`. sqlx 0.9 has no `jiff` support, so at the SQL boundary use the `jiff_sqlx` wrappers: alias result columns as `AS "col: jiff_sqlx::Timestamp"` in the `.sql` file and convert with `.to_jiff()`, and bind parameters with `.to_sqlx() as _`.
 - Regenerating the cache needs a running Postgres with the migrations applied: set `DATABASE_URL` and run `cargo sqlx prepare --workspace -- --all-targets`.
 - Config comes from `PG_*` env vars. `.env` is for local use. Do not print or commit its values.
-
-## Protobuf
-
-`proto/protos/api.v2.proto` is compiled by `proto/build.rs` and needs `protoc` installed. Keep changes backward compatible (don't renumber or reuse fields).
 
 ## Git
 

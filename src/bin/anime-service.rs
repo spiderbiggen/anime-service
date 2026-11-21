@@ -16,6 +16,6 @@ async fn main() -> Result<()> {
     let poller = poller::Poller::persistent_from_state(&app_state).await?;
     poller.start()?;
 
-    anime_service::serve_combined(app_state).await?;
+    anime_service::serve_axum(app_state).await?;
     Ok(())
 }

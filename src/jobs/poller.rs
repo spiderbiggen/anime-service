@@ -132,30 +132,6 @@ fn interval_at_next_period(period: Duration) -> anyhow::Result<Interval> {
 }
 
 #[derive(Debug)]
-pub struct TransientPoller {
-    sender: Sender<DownloadGroup>,
-}
-
-impl TransientPoller {
-    #[must_use]
-    pub fn new(sender: Sender<DownloadGroup>) -> Self {
-        Self { sender }
-    }
-}
-
-impl NewDownloadsHandler for TransientPoller {
-    fn handle_new_downloads(
-        &self,
-        groups: Vec<DownloadGroup>,
-    ) -> impl Future<Output = anyhow::Result<()>> {
-        for group in groups {
-            let _ = self.sender.send(group);
-        }
-        std::future::ready(Ok(()))
-    }
-}
-
-#[derive(Debug)]
 pub struct PersistentPoller {
     database: DBPool,
     sender: Sender<DownloadGroup>,
