@@ -174,6 +174,7 @@ fn show() -> ShowSummary {
         tmdb_id: 1001,
         tvdb_id: Some(424_242),
         name: "Sample Show".into(),
+        original_name: Some("サンプルショー".into()),
         overview: "A made-up synopsis, long enough to see how an embed description looks.".into(),
         poster_url: Some("https://image.tmdb.org/t/p/w500/sample-poster.jpg".into()),
         backdrop_url: Some("https://image.tmdb.org/t/p/w780/sample-backdrop.jpg".into()),

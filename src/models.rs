@@ -116,6 +116,10 @@ pub struct ShowSummary {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tvdb_id: Option<u32>,
     pub name: String,
+    /// The name in the original language. Missing for summaries stored before this field
+    /// existed, until they are refreshed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original_name: Option<String>,
     pub overview: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub poster_url: Option<String>,
@@ -130,6 +134,7 @@ impl ShowSummary {
             tmdb_id: details.id,
             tvdb_id: external_ids.and_then(|ids| ids.tvdb_id),
             name: details.name,
+            original_name: Some(details.original_name).filter(|name| !name.is_empty()),
             overview: details.overview,
             poster_url: poster(details.poster_path),
             backdrop_url: backdrop(details.backdrop_path),
@@ -313,6 +318,7 @@ mod tests {
         assert_eq!(summary.tmdb_id, 7);
         assert_eq!(summary.tvdb_id, Some(99));
         assert_eq!(summary.name, "Sample");
+        assert_eq!(summary.original_name.as_deref(), Some("サンプル"));
         assert_eq!(
             summary.poster_url.as_deref(),
             Some("https://image.tmdb.org/t/p/w500/p.jpg")
@@ -330,6 +336,17 @@ mod tests {
 
         assert_eq!(parsed.tmdb_id, 7);
         assert_eq!(parsed.tvdb_id, None);
+    }
+
+    #[test]
+    fn summaries_stored_before_original_name_existed_still_load() {
+        let stored = r#"{ "tmdb_id": 7, "name": "Sample", "overview": "o" }"#;
+
+        let summary: ShowSummary = serde_json::from_str(stored).expect("old rows still load");
+
+        assert_eq!(summary.original_name, None);
+        let json = serde_json::to_value(&summary).expect("serializes");
+        assert!(json.get("original_name").is_none());
     }
 
     #[test]
