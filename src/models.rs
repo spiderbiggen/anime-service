@@ -1,146 +1,140 @@
-use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 
 use jiff::Timestamp;
+use jiff::civil::Date;
 use serde::Serialize;
-use url::Url;
+use tmdb::images::{BackdropSize, PosterSize, backdrop_url, poster_url};
+use tmdb::search::TvSearchResult;
+use tmdb::tv::{ExternalIds, TvDetails};
 
-use kitsu::models as kitsu;
-
-#[derive(Serialize, Copy, Clone, Debug)]
-pub struct ImageDimension {
-    pub width: u32,
-    pub height: u32,
+/// A page of results.
+#[derive(Serialize, Clone, Debug)]
+pub struct Page<T> {
+    pub page: u32,
+    pub total_pages: u32,
+    pub total_results: u32,
+    pub results: Vec<T>,
 }
 
-impl From<kitsu::ImageDimension> for ImageDimension {
-    fn from(value: kitsu::ImageDimension) -> Self {
+impl<T, U> From<tmdb::ListResponse<U>> for Page<T>
+where
+    T: From<U>,
+{
+    fn from(value: tmdb::ListResponse<U>) -> Self {
         Self {
-            width: value.width,
-            height: value.height,
+            page: value.page,
+            total_pages: value.total_pages,
+            total_results: value.total_results,
+            results: value.results.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+fn poster(path: Option<String>) -> Option<String> {
+    path.map(|path| poster_url(&path, PosterSize::W500))
+}
+
+fn backdrop(path: Option<String>) -> Option<String> {
+    path.map(|path| backdrop_url(&path, BackdropSize::W780))
+}
+
+/// A show in search results.
+#[derive(Serialize, Clone, Debug)]
+pub struct ShowSearchResult {
+    pub id: u32,
+    pub name: String,
+    pub original_name: String,
+    pub overview: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_air_date: Option<Date>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poster_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backdrop_url: Option<String>,
+    pub origin_country: Vec<String>,
+    pub genre_ids: Vec<u32>,
+    pub adult: bool,
+}
+
+impl From<TvSearchResult> for ShowSearchResult {
+    fn from(value: TvSearchResult) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            original_name: value.original_name,
+            overview: value.overview,
+            first_air_date: value.first_air_date,
+            poster_url: poster(value.poster_path),
+            backdrop_url: backdrop(value.backdrop_path),
+            origin_country: value.origin_country,
+            genre_ids: value.genre_ids,
+            adult: value.adult,
         }
     }
 }
 
 #[derive(Serialize, Clone, Debug)]
-pub struct ImageDefinition {
-    pub url: Url,
-    pub dimensions: ImageDimension,
+pub struct Genre {
+    pub id: u32,
+    pub name: String,
 }
 
-#[derive(Serialize, Clone, Debug)]
-pub struct Images {
-    pub original: Url,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub large: Option<ImageDefinition>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub medium: Option<ImageDefinition>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub small: Option<ImageDefinition>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tiny: Option<ImageDefinition>,
-}
-
-impl From<kitsu::Images> for Images {
-    fn from(value: kitsu::Images) -> Self {
-        Self {
-            original: value.original,
-            large: value
-                .large
-                .zip(value.meta.dimensions.large)
-                .map(|(u, i)| ImageDefinition {
-                    url: u,
-                    dimensions: i.into(),
-                }),
-            medium: value
-                .medium
-                .zip(value.meta.dimensions.medium)
-                .map(|(u, i)| ImageDefinition {
-                    url: u,
-                    dimensions: i.into(),
-                }),
-            small: value
-                .small
-                .zip(value.meta.dimensions.small)
-                .map(|(u, i)| ImageDefinition {
-                    url: u,
-                    dimensions: i.into(),
-                }),
-            tiny: value
-                .tiny
-                .zip(value.meta.dimensions.tiny)
-                .map(|(u, i)| ImageDefinition {
-                    url: u,
-                    dimensions: i.into(),
-                }),
-        }
-    }
-}
-
-#[derive(Serialize, Clone, Debug)]
-pub struct Titles {
-    pub en: Option<String>,
-    pub en_jp: String,
-    pub ja_jp: String,
-}
-
-impl From<kitsu::Titles> for Titles {
-    fn from(value: kitsu::Titles) -> Self {
-        Self {
-            en: value.en,
-            en_jp: value.en_jp,
-            ja_jp: value.ja_jp,
-        }
-    }
-}
-
+/// The details of a show.
 #[derive(Serialize, Clone, Debug)]
 pub struct Show {
     pub id: u32,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
-    pub slug: String,
-    pub synopsis: String,
-    pub description: String,
-    pub canonical_title: String,
-    pub start_date: String,
+    /// The `TheTVDB` id, which Sonarr uses. Missing when TMDB does not know it.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub end_date: Option<String>,
-    pub poster_image: Images,
-    pub cover_image: Option<Images>,
-    pub episode_count: Option<u32>,
-    pub episode_length: Option<u32>,
+    pub tvdb_id: Option<u32>,
+    pub name: String,
+    pub original_name: String,
+    pub overview: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub total_length: Option<u64>,
+    pub status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub youtube_video_id: Option<String>,
-    pub nsfw: bool,
+    pub first_air_date: Option<Date>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_air_date: Option<Date>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub number_of_episodes: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub number_of_seasons: Option<u32>,
+    pub adult: bool,
+    pub genres: Vec<Genre>,
+    pub origin_country: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poster_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backdrop_url: Option<String>,
 }
 
-impl TryFrom<kitsu::Anime> for Show {
-    type Error = ParseIntError;
-
-    fn try_from(value: kitsu::Anime) -> Result<Self, Self::Error> {
-        let id = value.id.parse()?;
-
-        Ok(Self {
-            id,
-            created_at: value.attributes.created_at,
-            updated_at: value.attributes.updated_at,
-            slug: value.attributes.slug,
-            synopsis: value.attributes.synopsis,
-            description: value.attributes.description,
-            canonical_title: value.attributes.canonical_title,
-            start_date: value.attributes.start_date,
-            end_date: value.attributes.end_date,
-            poster_image: value.attributes.poster_image.into(),
-            cover_image: value.attributes.cover_image.map(Into::into),
-            episode_count: value.attributes.episode_count,
-            episode_length: value.attributes.episode_length,
-            total_length: value.attributes.total_length,
-            youtube_video_id: value.attributes.youtube_video_id,
-            nsfw: value.attributes.nsfw,
-        })
+impl Show {
+    #[must_use]
+    pub fn new(details: TvDetails, external_ids: Option<ExternalIds>) -> Self {
+        Self {
+            id: details.id,
+            tvdb_id: external_ids.and_then(|ids| ids.tvdb_id),
+            name: details.name,
+            original_name: details.original_name,
+            overview: details.overview,
+            status: details.status,
+            first_air_date: details.first_air_date,
+            last_air_date: details.last_air_date,
+            number_of_episodes: details.number_of_episodes,
+            number_of_seasons: details.number_of_seasons,
+            adult: details.adult,
+            genres: details
+                .genres
+                .into_iter()
+                .map(|genre| Genre {
+                    id: genre.id,
+                    name: genre.name,
+                })
+                .collect(),
+            origin_country: details.origin_country,
+            poster_url: poster(details.poster_path),
+            backdrop_url: backdrop(details.backdrop_path),
+        }
     }
 }
 
@@ -236,5 +230,82 @@ impl From<nyaa::Download> for Download {
             file_name: value.file_name,
             published_date: value.pub_date,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn details() -> TvDetails {
+        serde_json::from_str(
+            r#"{
+                "id": 7, "name": "Sample", "original_name": "サンプル", "overview": "o",
+                "status": "Ended", "first_air_date": "2023-09-29", "last_air_date": "",
+                "number_of_episodes": 12, "number_of_seasons": 1,
+                "genres": [{ "id": 16, "name": "Animation" }],
+                "origin_country": ["JP"],
+                "poster_path": "/p.jpg", "backdrop_path": null
+            }"#,
+        )
+        .expect("valid details")
+    }
+
+    fn external_ids(tvdb_id: Option<u32>) -> ExternalIds {
+        ExternalIds {
+            id: 7,
+            imdb_id: None,
+            tvdb_id,
+        }
+    }
+
+    #[test]
+    fn show_uses_the_tvdb_id_and_builds_image_urls() {
+        let show = Show::new(details(), Some(external_ids(Some(99))));
+
+        assert_eq!(show.tvdb_id, Some(99));
+        assert_eq!(
+            show.poster_url.as_deref(),
+            Some("https://image.tmdb.org/t/p/w500/p.jpg")
+        );
+        assert_eq!(show.backdrop_url, None);
+        assert_eq!(show.last_air_date, None);
+        assert_eq!(show.genres[0].name, "Animation");
+    }
+
+    #[test]
+    fn show_without_external_ids_has_no_tvdb_id() {
+        assert_eq!(Show::new(details(), None).tvdb_id, None);
+        assert_eq!(Show::new(details(), Some(external_ids(None))).tvdb_id, None);
+    }
+
+    #[test]
+    fn show_skips_missing_values_when_serialized() {
+        let json = serde_json::to_value(Show::new(details(), None)).expect("serializes");
+
+        assert!(json.get("tvdb_id").is_none());
+        assert!(json.get("backdrop_url").is_none());
+        assert_eq!(json["first_air_date"], "2023-09-29");
+    }
+
+    #[test]
+    fn page_maps_every_result() {
+        let page: tmdb::ListResponse<TvSearchResult> = serde_json::from_str(
+            r#"{ "page": 2, "total_pages": 5, "total_results": 90,
+                 "results": [{ "id": 1, "name": "A", "backdrop_path": "/b.jpg" }] }"#,
+        )
+        .expect("valid page");
+
+        let page: Page<ShowSearchResult> = page.into();
+
+        assert_eq!(
+            (page.page, page.total_pages, page.total_results),
+            (2, 5, 90)
+        );
+        assert_eq!(page.results[0].name, "A");
+        assert_eq!(
+            page.results[0].backdrop_url.as_deref(),
+            Some("https://image.tmdb.org/t/p/w780/b.jpg")
+        );
     }
 }

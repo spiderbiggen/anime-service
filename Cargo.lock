@@ -53,7 +53,7 @@ checksum = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5"
 
 [[package]]
 name = "anime-service"
-version = "0.2.14"
+version = "0.3.0"
 dependencies = [
  "ahash",
  "anyhow",
@@ -63,7 +63,6 @@ dependencies = [
  "futures",
  "jiff",
  "jiff-sqlx",
- "kitsu",
  "nyaa",
  "reqwest",
  "rustls",
@@ -71,6 +70,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "thiserror 2.0.21",
+ "tmdb",
  "tokio",
  "tower",
  "tower-http 0.7.1",
@@ -1383,20 +1383,6 @@ checksum = "1cfaf33c695fc6e08064efbc1f72ec937429614f25eef83af942d0e227c3a28f"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "kitsu"
-version = "0.1.1"
-dependencies = [
- "ahash",
- "jiff",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tracing",
- "url",
 ]
 
 [[package]]

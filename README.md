@@ -1,6 +1,6 @@
 # anime-service
 
-Polls [Nyaa](https://nyaa.si) for new anime releases, stores them in PostgreSQL, and serves them over REST, with Server-Sent Events for live updates, on port `8000`. Show metadata comes from [Kitsu](https://kitsu.app).
+Polls [Nyaa](https://nyaa.si) for new anime releases, stores them in PostgreSQL, and serves them over REST, with Server-Sent Events for live updates, on port `8000`. Show metadata comes from [TMDB](https://www.themoviedb.org).
 
 ## API
 
@@ -9,7 +9,8 @@ REST endpoints (everything except the health check is under `/v1`):
 | Endpoint                                              | Description                                   |
 |-------------------------------------------------------|-----------------------------------------------|
 | `GET /health`                                         | Health check (204)                            |
-| `GET /v1/shows`, `GET /v1/shows/{id}`                 | Show metadata from Kitsu                      |
+| `GET /v1/shows?query=`                                | Search TV shows (also `page`, `language`)     |
+| `GET /v1/shows/{id}`                                  | Show details by TMDB id, with `tvdb_id`       |
 | `GET /v1/downloads`                                   | Latest downloads (25), all variants           |
 | `GET /v1/downloads/{batches,episodes,movies}`         | Same, for one variant                         |
 | `GET /v1/downloads[/{batches,episodes,movies}]/updates` | SSE stream of new downloads                 |
@@ -20,7 +21,7 @@ Live updates are Server-Sent Events: each new release arrives as an event named 
 
 ## Running
 
-Set `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASS` and `PG_DATABASE` (a `.env` file works locally). Migrations run on startup. Use `RUST_LOG` to control logging.
+Set `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASS` and `PG_DATABASE`, plus `TMDB_ACCESS_TOKEN` (a TMDB API read access token; the service refuses to start without it). A `.env` file works locally. Migrations run on startup. Use `RUST_LOG` to control logging.
 
 ```sh
 cargo run --bin anime-service     # poller + REST/SSE
@@ -32,4 +33,8 @@ Pushing a `v*.*.*` tag builds musl binaries (amd64, arm64) and publishes a Docke
 
 ## Layout
 
-`nyaa/`, `kitsu/` and `tmdb/` are the API clients and the root crate is the service itself. See `AGENTS.md` for the file-level details.
+`nyaa/` and `tmdb/` are the API clients and the root crate is the service itself. See `AGENTS.md` for the file-level details.
+
+## Credits
+
+This product uses the TMDB API but is not endorsed or certified by TMDB.

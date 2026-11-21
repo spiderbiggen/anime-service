@@ -1,11 +1,11 @@
 [package]
 name = "anime-service"
-version = "0.2.14"
+version = "0.3.0"
 authors = ["Stefan Breetveld <spiderbiggen@gmail.com>"]
 edition = "2024"
 
 [workspace]
-members = ["kitsu", "nyaa", "tmdb"]
+members = ["nyaa", "tmdb"]
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -24,8 +24,8 @@ workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-kitsu = { path = "kitsu" }
 nyaa = { path = "nyaa" }
+tmdb = { path = "tmdb" }
 
 ahash = "0.8.11"
 anyhow = "1"
