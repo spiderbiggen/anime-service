@@ -15,7 +15,7 @@ CI (`.github/workflows/ci.yml`) runs fmt check, tests, and clippy. Run all three
 
 ## Layout
 
-- Cargo workspace: root crate `anime-service` plus `nyaa` and `kitsu`.
+- Cargo workspace: root crate `anime-service` plus the clients `nyaa`, `kitsu` and `tmdb` (not used by the service yet).
 - `src/controllers/rest.rs` handles transport (REST and SSE); `src/datasource/repository/` holds DB access; `src/jobs/poller.rs` is the Nyaa poller; `src/state.rs` holds `AppState`.
 - `src/bin/anime-service.rs` is the only binary.
 - Router wiring lives in `src/lib.rs`.

@@ -1,0 +1,43 @@
+{
+  "page": 1,
+  "results": [
+    {
+      "adult": false,
+      "backdrop_path": "/sample-backdrop.jpg",
+      "genre_ids": [16, 10759, 18],
+      "id": 1001,
+      "origin_country": ["JP"],
+      "original_language": "ja",
+      "original_name": "サンプルアニメ",
+      "overview": "A made-up synopsis for a made-up show.",
+      "popularity": 123.456,
+      "poster_path": "/sample-poster.jpg",
+      "first_air_date": "2023-09-29",
+      "name": "Sample Anime",
+      "vote_average": 8.7,
+      "vote_count": 1234
+    },
+    {
+      "adult": false,
+      "backdrop_path": null,
+      "genre_ids": [18],
+      "id": 1002,
+      "origin_country": ["US"],
+      "original_language": "en",
+      "original_name": "Sample Drama",
+      "overview": "",
+      "popularity": 1.5,
+      "poster_path": null,
+      "first_air_date": "",
+      "name": "Sample Drama",
+      "vote_average": 0,
+      "vote_count": 0
+    },
+    {
+      "id": 1003,
+      "name": "Sparse Entry"
+    }
+  ],
+  "total_pages": 3,
+  "total_results": 42
+}
