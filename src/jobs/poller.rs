@@ -2,7 +2,9 @@ use std::future::Future;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use jiff::Timestamp;
+use anyhow::{Context, bail};
+use jiff::{SignedDuration, Timestamp};
+use serde::Deserialize;
 use tokio::sync::broadcast::Sender;
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, Interval, MissedTickBehavior, interval_at, timeout};
@@ -16,6 +18,62 @@ use crate::models::DownloadGroup;
 use crate::state::{AppState, DBPool, ReqwestClient};
 
 const DEFAULT_INTERVAL: Duration = Duration::from_mins(5);
+
+/// Optional overrides for how the poller runs, read from `POLL_*` environment variables.
+///
+/// They exist for testing a consumer without waiting for Nyaa to publish something: a short
+/// interval plus a lookback replays recent releases within a minute.
+#[derive(Debug, Default, Deserialize)]
+pub struct PollerConfig {
+    /// `POLL_INTERVAL_SECS`: seconds between polls, 300 by default. Polls are aligned to
+    /// multiples of the interval.
+    interval_secs: Option<u64>,
+    /// `POLL_LOOKBACK_SECS`: replay the releases published within this many seconds on the first
+    /// poll, instead of continuing after the newest stored release.
+    lookback_secs: Option<u64>,
+}
+
+impl PollerConfig {
+    /// Reads the configuration from the environment.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a `POLL_*` variable is not a valid number.
+    pub fn from_env() -> anyhow::Result<Self> {
+        envy::prefixed("POLL_")
+            .from_env()
+            .context("POLL_INTERVAL_SECS and POLL_LOOKBACK_SECS must be whole numbers of seconds")
+    }
+
+    /// How often to poll.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the interval is zero.
+    pub fn interval(&self) -> anyhow::Result<Duration> {
+        match self.interval_secs {
+            None => Ok(DEFAULT_INTERVAL),
+            Some(0) => bail!("POLL_INTERVAL_SECS must be at least 1"),
+            Some(secs) => Ok(Duration::from_secs(secs)),
+        }
+    }
+
+    /// The moment to replay releases from, when a lookback is configured.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the lookback is too large to represent.
+    pub fn replay_since(&self) -> anyhow::Result<Option<Timestamp>> {
+        self.lookback_secs
+            .map(|secs| {
+                let secs = i64::try_from(secs).context("POLL_LOOKBACK_SECS is too large")?;
+                Timestamp::now()
+                    .checked_sub(SignedDuration::from_secs(secs))
+                    .context("POLL_LOOKBACK_SECS reaches back too far")
+            })
+            .transpose()
+    }
+}
 
 pub trait NewDownloadsHandler: Sized + Send + Sync {
     fn handle_new_downloads(
@@ -31,10 +89,19 @@ pub struct Poller<Handler: NewDownloadsHandler> {
 }
 
 impl Poller<PersistentPoller> {
-    pub async fn persistent_from_state(state: &AppState) -> anyhow::Result<Self> {
-        let last_update = repository::downloads::last_updated(&state.pool)
-            .await?
-            .unwrap_or_else(Timestamp::now);
+    /// Creates a poller that stores and broadcasts new releases.
+    ///
+    /// It continues after the newest stored release, or replays from `replay_since` when given.
+    pub async fn persistent_from_state(
+        state: &AppState,
+        replay_since: Option<Timestamp>,
+    ) -> anyhow::Result<Self> {
+        let last_update = match replay_since {
+            Some(since) => since,
+            None => repository::downloads::last_updated(&state.pool)
+                .await?
+                .unwrap_or_else(Timestamp::now),
+        };
         Ok(Self::new_with_last_updated_at(
             state.client.clone(),
             PersistentPoller::new(state),
@@ -163,5 +230,69 @@ impl NewDownloadsHandler for PersistentPoller {
             let _ = self.sender.send(group);
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(vars: &[(&str, &str)]) -> Result<PollerConfig, envy::Error> {
+        envy::prefixed("POLL_").from_iter(
+            vars.iter()
+                .map(|(name, value)| ((*name).to_owned(), (*value).to_owned())),
+        )
+    }
+
+    #[test]
+    fn defaults_when_nothing_is_set() {
+        let config = config(&[]).expect("valid config");
+
+        assert_eq!(config.interval().expect("valid"), DEFAULT_INTERVAL);
+        assert!(config.replay_since().expect("valid").is_none());
+    }
+
+    #[test]
+    fn interval_can_be_overridden() {
+        let config = config(&[("POLL_INTERVAL_SECS", "60")]).expect("valid config");
+
+        assert_eq!(config.interval().expect("valid"), Duration::from_mins(1));
+    }
+
+    #[test]
+    fn a_zero_interval_is_rejected() {
+        let config = config(&[("POLL_INTERVAL_SECS", "0")]).expect("valid config");
+
+        assert!(config.interval().is_err());
+    }
+
+    #[test]
+    fn values_that_are_not_numbers_are_rejected() {
+        assert!(config(&[("POLL_INTERVAL_SECS", "soon")]).is_err());
+        assert!(config(&[("POLL_LOOKBACK_SECS", "-5")]).is_err());
+    }
+
+    #[test]
+    fn lookback_replays_from_that_long_ago() {
+        let config = config(&[("POLL_LOOKBACK_SECS", "3600")]).expect("valid config");
+
+        let since = config
+            .replay_since()
+            .expect("valid")
+            .expect("a lookback is set");
+        let age = Timestamp::now().duration_since(since).as_secs();
+
+        assert!((3600..3605).contains(&age), "lookback was {age}s");
+    }
+
+    #[test]
+    fn a_lookback_that_is_too_large_is_rejected() {
+        let huge = u64::MAX.to_string();
+        let beyond_range = i64::MAX.to_string();
+
+        for value in [&huge, &beyond_range] {
+            let config = config(&[("POLL_LOOKBACK_SECS", value)]).expect("valid config");
+            assert!(config.replay_since().is_err(), "{value} should be rejected");
+        }
     }
 }
