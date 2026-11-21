@@ -27,6 +27,7 @@ CI (`.github/workflows/ci.yml`) runs fmt check, tests, and clippy. Run all three
 - Write good doc comments (`///`) on public items. Keep inline code comments minimal and only for non-obvious "why".
 - Use `tracing` (`#[instrument]`, `info!`, etc.), not `println!`.
 - The Rust toolchain is pinned in `rust-toolchain.toml` and CI installs exactly that version. Renovate bumps it in its own PR, which is where new clippy lints should be fixed. Don't switch CI back to floating `stable`.
+- `CLAUDE.md` only contains `@AGENTS.md` so Claude Code loads this file. Keep the guidance here, not there.
 
 ## Database
 
