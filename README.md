@@ -24,7 +24,6 @@ Set `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASS` and `PG_DATABASE` (a `.env` file 
 
 ```sh
 cargo run --bin anime-service     # poller + REST/SSE
-cargo run --bin combined-debug    # polls every minute, looks back one week
 ```
 
 Needs Postgres. sqlx checks queries at compile time: set `DATABASE_URL`, or rely on the offline cache in `.sqlx/` (refresh it with `cargo sqlx prepare --workspace`).
