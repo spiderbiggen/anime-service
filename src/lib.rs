@@ -1,17 +1,10 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::Arc;
 
 use anyhow::Result;
-use axum::body::Body;
-use axum::http::{HeaderValue, Request};
 use axum::response::NoContent;
 use axum::{Router as AxumRouter, Router, routing::get};
-use reqwest::header::CONTENT_TYPE;
 use tokio::net::TcpListener;
-use tokio::sync::broadcast::Sender;
 use tower::ServiceBuilder;
-use tower::make::Shared;
-use tower::steer::Steer;
 use tower_http::compression::predicate::NotForContentType;
 use tower_http::compression::{DefaultPredicate, Predicate};
 use tower_http::{
@@ -42,41 +35,8 @@ pub async fn serve_axum(app_state: AppState) -> Result<()> {
     setup_rustls();
     let router = create_axum_router(app_state);
     let listener = TcpListener::bind(SOCKET).await?;
-    tracing::debug!("listening on {SOCKET}");
+    info!("Listening on {SOCKET}");
     axum::serve(listener, router.into_make_service()).await?;
-    Ok(())
-}
-
-pub async fn serve_tonic(sender: Sender<models::DownloadGroup>) -> Result<()> {
-    setup_rustls();
-    let router = create_tonic_router(sender);
-    let listener = TcpListener::bind(SOCKET).await?;
-    info!("Listening on {SOCKET}");
-    axum::serve(listener, router).await?;
-    Ok(())
-}
-
-pub async fn serve_combined(app_state: AppState) -> Result<()> {
-    setup_rustls();
-    let tonic_router = create_tonic_router(app_state.downloads_channel.clone());
-    let axum_router = create_axum_router(app_state);
-
-    let http_grpc = Steer::new(
-        vec![axum_router, tonic_router],
-        |req: &Request<Body>, _services: &[_]| {
-            let is_grpc = req
-                .headers()
-                .get(CONTENT_TYPE)
-                .map(HeaderValue::as_bytes)
-                .is_some_and(|content_type| content_type.starts_with(b"application/grpc"));
-            // 0 -> http, 1 -> grpc
-            usize::from(is_grpc)
-        },
-    );
-
-    let listener = TcpListener::bind(SOCKET).await?;
-    info!("Listening on {SOCKET}");
-    axum::serve(listener, Shared::new(http_grpc)).await?;
     Ok(())
 }
 
@@ -131,14 +91,4 @@ pub fn v1_routes() -> Router<AppState> {
                         .route("/updates", get(movie::get_downloads_events)),
                 ),
         )
-}
-
-pub fn create_tonic_router(sender: Sender<models::DownloadGroup>) -> Router {
-    use controllers::grpc::DownloadService;
-    use proto::api::v2::downloads_server::DownloadsServer as V2DownloadsServer;
-
-    let service = Arc::new(DownloadService { sender });
-    let mut builder = tonic::service::Routes::builder();
-    builder.add_service(V2DownloadsServer::from_arc(service));
-    builder.routes().into_axum_router()
 }

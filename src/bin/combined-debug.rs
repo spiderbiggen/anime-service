@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
         Duration::from_mins(1),
     );
     poller.start_with_interval(interval);
-    anime_service::serve_combined(app_state).await?;
+    anime_service::serve_axum(app_state).await?;
     Ok(())
 }
 

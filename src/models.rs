@@ -178,18 +178,6 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
     }
 }
 
-impl From<DownloadGroup> for proto::api::v2::DownloadCollection {
-    fn from(value: DownloadGroup) -> Self {
-        proto::api::v2::DownloadCollection {
-            created_at: Some(prost_timestamp(value.created_at)),
-            updated_at: Some(prost_timestamp(value.updated_at)),
-            title: value.title,
-            variant: Some(value.variant.into()),
-            downloads: value.downloads.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "variant", rename_all = "snake_case")]
 pub enum DownloadVariant {
@@ -204,25 +192,6 @@ impl From<nyaa::DownloadVariant> for DownloadVariant {
             nyaa::DownloadVariant::Batch(range) => DownloadVariant::Batch(range),
             nyaa::DownloadVariant::Episode(ep) => DownloadVariant::Episode(ep.into()),
             nyaa::DownloadVariant::Movie => DownloadVariant::Movie,
-        }
-    }
-}
-
-impl From<DownloadVariant> for proto::api::v2::download_collection::Variant {
-    fn from(value: DownloadVariant) -> Self {
-        match value {
-            DownloadVariant::Batch(range) => {
-                proto::api::v2::download_collection::Variant::Batch(proto::api::v2::Batch {
-                    start: *range.start(),
-                    end: *range.end(),
-                })
-            }
-            DownloadVariant::Episode(ep) => {
-                proto::api::v2::download_collection::Variant::Episode(ep.into())
-            }
-            DownloadVariant::Movie => {
-                proto::api::v2::download_collection::Variant::Movie(proto::api::v2::Movie {})
-            }
         }
     }
 }
@@ -249,17 +218,6 @@ impl From<nyaa::Episode> for Episode {
     }
 }
 
-impl From<Episode> for proto::api::v2::Episode {
-    fn from(value: Episode) -> Self {
-        Self {
-            number: value.episode,
-            decimal: value.decimal.unwrap_or_default(),
-            version: value.version.unwrap_or_default(),
-            extra: value.extra.unwrap_or_default(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct Download {
     pub comments: String,
@@ -278,24 +236,5 @@ impl From<nyaa::Download> for Download {
             file_name: value.file_name,
             published_date: value.pub_date,
         }
-    }
-}
-
-impl From<Download> for proto::api::v2::Download {
-    fn from(value: Download) -> Self {
-        Self {
-            published_date: Some(prost_timestamp(value.published_date)),
-            resolution: u32::from(value.resolution),
-            comments: value.comments,
-            torrent: value.torrent,
-            file_name: value.file_name,
-        }
-    }
-}
-
-fn prost_timestamp(date_time: Timestamp) -> prost_types::Timestamp {
-    prost_types::Timestamp {
-        seconds: date_time.as_second(),
-        nanos: date_time.subsec_nanosecond(),
     }
 }

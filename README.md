@@ -1,6 +1,6 @@
 # anime-service
 
-Polls [Nyaa](https://nyaa.si) for new anime releases, stores them in PostgreSQL, and serves them over REST (with SSE) and gRPC streaming on port `8000`. Show metadata comes from [Kitsu](https://kitsu.app).
+Polls [Nyaa](https://nyaa.si) for new anime releases, stores them in PostgreSQL, and serves them over REST, with Server-Sent Events for live updates, on port `8000`. Show metadata comes from [Kitsu](https://kitsu.app).
 
 ## API
 
@@ -16,22 +16,21 @@ REST endpoints (everything except the health check is under `/v1`):
 
 The downloads list endpoints (not `/updates`) accept an optional case-insensitive `?title=` prefix filter.
 
-gRPC: `Downloads.Subscribe` (server-streaming), see `proto/protos/api.v2.proto`.
+Live updates are Server-Sent Events: each new release arrives as an event named `download` whose data is the same JSON as the list endpoints.
 
 ## Running
 
 Set `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASS` and `PG_DATABASE` (a `.env` file works locally). Migrations run on startup. Use `RUST_LOG` to control logging.
 
 ```sh
-cargo run --bin anime-service     # poller + REST + gRPC
+cargo run --bin anime-service     # poller + REST/SSE
 cargo run --bin combined-debug    # polls every minute, looks back one week
-cargo run --bin streams           # poller + gRPC only, no database
 ```
 
-Needs `protoc` and Postgres. sqlx checks queries at compile time: set `DATABASE_URL`, or rely on the offline cache in `.sqlx/` (refresh it with `cargo sqlx prepare --workspace`).
+Needs Postgres. sqlx checks queries at compile time: set `DATABASE_URL`, or rely on the offline cache in `.sqlx/` (refresh it with `cargo sqlx prepare --workspace`).
 
 Pushing a `v*.*.*` tag builds musl binaries (amd64, arm64) and publishes a Docker image to GHCR.
 
 ## Layout
 
-`nyaa/` and `kitsu/` are the API clients, `proto/` holds the gRPC definitions, and the root crate is the service itself. See `AGENTS.md` for the file-level details.
+`nyaa/` and `kitsu/` are the API clients and the root crate is the service itself. See `AGENTS.md` for the file-level details.
