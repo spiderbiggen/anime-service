@@ -85,6 +85,8 @@ pub fn create_axum_router(app_state: AppState) -> AxumRouter {
         DefaultPredicate::new().and(NotForContentType::const_new("text/event-stream"));
 
     AxumRouter::new()
+        // Unversioned on purpose: probes and load balancers should not depend on the API version.
+        .route("/health", get(async || NoContent))
         .nest("/v1", v1_routes())
         .with_state(app_state)
         .layer(
@@ -99,7 +101,6 @@ pub fn v1_routes() -> Router<AppState> {
     use controllers::rest::{batch, downloads, episode, movie};
 
     AxumRouter::new()
-        .route("/health", get(async || NoContent))
         .nest(
             "/shows",
             AxumRouter::new()

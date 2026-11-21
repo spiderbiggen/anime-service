@@ -15,7 +15,7 @@ CI (`.github/workflows/ci.yml`) runs fmt check, tests, and clippy. Run all three
 
 ## Layout
 
-- Cargo workspace: root crate `anime-service` plus `nyaa`, `kitsu`, `proto`. `tmdb/` is an unfinished stub outside the workspace.
+- Cargo workspace: root crate `anime-service` plus `nyaa`, `kitsu`, `proto`.
 - `src/controllers/{rest,grpc}.rs` handle transport; `src/datasource/repository/` holds DB access; `src/jobs/poller.rs` is the Nyaa poller; `src/state.rs` holds `AppState`.
 - `src/bin/`: `anime-service` (production), `combined-debug` (fast polling), `streams` (no DB).
 - Router wiring and the shared port-8000 HTTP/gRPC split live in `src/lib.rs`.
