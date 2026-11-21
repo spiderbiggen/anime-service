@@ -5,9 +5,10 @@
   ],
   "packageRules": [
     {
-      "description": "Wait a few days before updating crates to avoid freshly published (or yanked) releases. Security updates ignore this.",
+      "description": "Wait a few days before updating crates and Docker images to avoid freshly published (or yanked) releases. Security updates ignore this.",
       "matchDatasources": [
-        "crate"
+        "crate",
+        "docker"
       ],
       "minimumReleaseAge": "3 days"
     },
