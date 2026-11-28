@@ -92,12 +92,25 @@ impl ShowResolver {
     }
 
     /// Searches TMDB for a title and records the best match, or that there is none.
+    ///
+    /// A title with a season suffix that finds nothing is searched again without it. The result is
+    /// always recorded under the full title, which is what downloads are joined on.
     async fn match_title(&self, title: &str) -> anyhow::Result<()> {
-        let page = tmdb::search::tv(&self.tmdb, &TvSearchParams::new(title)).await?;
-        let found = select_match(&page.results).map(|result| result.id);
+        let mut found = self.search_show(title).await?;
+        if found.is_none()
+            && let Some(base_title) = without_season_suffix(title)
+        {
+            found = self.search_show(base_title).await?;
+        }
         debug!(title, ?found, "matched a title");
         shows::upsert_title_match(&self.pool, title, found).await?;
         Ok(())
+    }
+
+    /// Returns the id of the show that best matches a search query.
+    async fn search_show(&self, query: &str) -> anyhow::Result<Option<u32>> {
+        let page = tmdb::search::tv(&self.tmdb, &TvSearchParams::new(query)).await?;
+        Ok(select_match(&page.results).map(|result| result.id))
     }
 
     /// Fetches the details of a show and stores its summary.
@@ -128,6 +141,15 @@ fn select_match(results: &[TvSearchResult]) -> Option<&TvSearchResult> {
     results.iter().find(|result| result.is_animation())
 }
 
+/// Strips a trailing season marker such as ` S2`, which release titles carry but TMDB show names
+/// usually don't. Returns `None` when there is no such marker.
+fn without_season_suffix(title: &str) -> Option<&str> {
+    let (base, suffix) = title.rsplit_once(' ')?;
+    let season = suffix.strip_prefix('S')?;
+    let is_season = !season.is_empty() && season.bytes().all(|byte| byte.is_ascii_digit());
+    (is_season && !base.is_empty()).then_some(base)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,6 +169,31 @@ mod tests {
         );
 
         assert_eq!(select_match(&results).map(|r| r.id), Some(2));
+    }
+
+    #[test]
+    fn strips_a_trailing_season_suffix() {
+        assert_eq!(
+            without_season_suffix("Tensei Shitara Ken Deshita S2"),
+            Some("Tensei Shitara Ken Deshita")
+        );
+        assert_eq!(without_season_suffix("Sample S12"), Some("Sample"));
+    }
+
+    #[test]
+    fn titles_without_a_season_suffix_are_not_stripped() {
+        for title in [
+            "Sample",
+            "Sample S",
+            "Sample 2",
+            "Sample S2 Part",
+            "Sample SS2",
+            "Sample S2x",
+            "S2",
+            " S2",
+        ] {
+            assert_eq!(without_season_suffix(title), None, "{title:?}");
+        }
     }
 
     #[test]
