@@ -1,7 +1,7 @@
 //! A small client for the [TMDB](https://www.themoviedb.org) v3 API.
 //!
 //! Only what anime-service needs is covered: TV search ([`search::tv`]), TV details
-//! ([`tv::details`]) and external ids ([`tv::external_ids`]). Requests authenticate with an API
+//! ([`tv::details`]), seasons ([`tv::season`]) and external ids ([`tv::external_ids`]). Requests authenticate with an API
 //! read access token sent as a bearer header.
 //!
 //! ```no_run

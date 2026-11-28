@@ -200,6 +200,39 @@ pub struct DownloadGroup {
     /// The show this release belongs to, when it could be matched to one.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show: Option<ShowSummary>,
+    /// The release's TMDB season and episode numbers, when they could be checked.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tmdb: Option<TmdbMatch>,
+}
+
+/// Where a release is on TMDB. Its numbering can differ from the release's own.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TmdbMatch {
+    pub season: SeasonRef,
+    #[serde(flatten)]
+    pub episodes: TmdbEpisodes,
+}
+
+/// A season of a show.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SeasonRef {
+    pub number: u32,
+}
+
+/// The episodes a release holds, numbered within their TMDB season. Serialized as an `episode`
+/// object for a single episode and an `episodes` object for a batch.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TmdbEpisodes {
+    Episode { number: u32 },
+    Episodes(EpisodeRange),
+}
+
+/// An inclusive range of episode numbers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct EpisodeRange {
+    pub start: u32,
+    pub end: u32,
 }
 
 impl From<nyaa::AnimeDownloads> for DownloadGroup {
@@ -223,6 +256,7 @@ impl From<nyaa::AnimeDownloads> for DownloadGroup {
             updated_at,
             downloads: value.downloads.into_iter().map(Into::into).collect(),
             show: None,
+            tmdb: None,
         }
     }
 }
@@ -406,6 +440,27 @@ mod tests {
         assert!(json.get("tvdb_id").is_none());
         assert!(json.get("backdrop_url").is_none());
         assert_eq!(json["first_air_date"], "2023-09-29");
+    }
+
+    #[test]
+    fn a_tmdb_match_names_one_episode_or_a_range() {
+        let episode = TmdbMatch {
+            season: SeasonRef { number: 1 },
+            episodes: TmdbEpisodes::Episode { number: 38 },
+        };
+        let batch = TmdbMatch {
+            season: SeasonRef { number: 3 },
+            episodes: TmdbEpisodes::Episodes(EpisodeRange { start: 1, end: 24 }),
+        };
+
+        assert_eq!(
+            serde_json::to_value(episode).expect("serializes"),
+            serde_json::json!({ "season": { "number": 1 }, "episode": { "number": 38 } })
+        );
+        assert_eq!(
+            serde_json::to_value(batch).expect("serializes"),
+            serde_json::json!({ "season": { "number": 3 }, "episodes": { "start": 1, "end": 24 } })
+        );
     }
 
     #[test]

@@ -21,7 +21,7 @@ Live updates are Server-Sent Events: each new release arrives as an event named 
 
 ## Show matching
 
-When a new release arrives, the service looks its title up on TMDB (the top result tagged Animation; if there is none and the title ends in a season suffix such as `S2`, it searches again without it) and attaches the show to the download as a `show` object with `tmdb_id`, `tvdb_id`, `name`, `original_name` (the name in the original language), `romaji_name` (the romanized Japanese name, which release titles usually match; only when TMDB has one), `overview`, `poster_url` and `backdrop_url`. It appears in the downloads endpoints and in the SSE events. Matching is best-effort and takes at most about 5 seconds, so a release is never held back: if TMDB is slow or has no match, the download is sent without a `show`. Titles are only looked up when a new release for them arrives, so older downloads get a `show` later.
+When a new release arrives, the service looks its title up on TMDB (the top result tagged Animation; if there is none and the title ends in a season suffix such as `S2`, it searches again without it) and attaches the show to the download as a `show` object with `tmdb_id`, `tvdb_id`, `name`, `original_name` (the name in the original language), `romaji_name` (the romanized Japanese name, which release titles usually match; only when TMDB has one), `overview`, `poster_url` and `backdrop_url`. It appears in the downloads endpoints and in the SSE events. Matching is best-effort and takes at most about 15 seconds, so a release is never held back: if TMDB is slow or has no match, the download is sent without a `show`. Titles are only looked up when a new release for them arrives, so older downloads get a `show` later.
 
 Matches live in the `title_match` table and show data in the `show` table. A title with no match is retried after a week, and show data older than 30 days is refreshed the next time a release for it arrives. To fix a wrong match, add a manual row, which the resolver never overwrites:
 
@@ -29,6 +29,27 @@ Matches live in the `title_match` table and show data in the `show` table. A tit
 INSERT INTO title_match (title, tmdb_id, source) VALUES ('Some Title', 12345, 'manual')
 ON CONFLICT (title) DO UPDATE SET tmdb_id = EXCLUDED.tmdb_id, source = 'manual';
 ```
+
+## Season and episode numbers
+
+Release numbering does not always follow TMDB's, so downloads can carry a `tmdb` object with the numbers TMDB uses, next to the release's own: `{ "season": { "number": 1 }, "episode": { "number": 38 } }`, or `{ "season": { "number": 3 }, "episodes": { "start": 1, "end": 24 } }` for a batch. It is only sent when it passes the checks below; otherwise the download comes without it.
+
+- A title ending in a suffix such as `S2` is looked for in that TMDB season only. Any other title is numbered from season 1, running on into later regular seasons (specials are not counted).
+- The episodes must exist in that season. A single episode must be released at most 10 days before and 3 days after its TMDB air date. A batch must fit in one season and be released at most 10 days before its last episode airs.
+- Movies and decimal episodes such as `10.5` get no `tmdb` object.
+
+Other season markers, such as `2nd Season` or `Part 2`, are not recognized. The date check rejects many wrong guesses for single episodes, but far fewer for batches. A wrong number that is still within the date limits is not detected.
+
+Seasons are cached in the `season` table and fetched when a release needs one. The match is worked out each time a download is read, so older downloads get it once their season is cached, and corrections apply to them too. Notifications that were already sent do not change.
+
+To correct a title, set the TMDB season and what to add to the release's episode number (which may be negative). This skips the date checks, but the episodes must still exist in that season. For example, TMDB lists `Sousou no Frieren S2` as episodes 29 onwards of season 1:
+
+```sql
+UPDATE title_match SET season_number = 1, episode_offset = 28
+WHERE title = 'Sousou no Frieren S2';
+```
+
+The row exists once a release with that title has been looked up. Set both columns back to `NULL` to remove the correction. A season that is not cached yet is fetched when the next release for the title arrives.
 
 ## Running
 

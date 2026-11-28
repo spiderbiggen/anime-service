@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO show (tmdb_id, data, seasons, fetched_at)\nVALUES ($1, $2, $3, now())\nON CONFLICT (tmdb_id) DO UPDATE\n    SET data       = EXCLUDED.data,\n        seasons    = EXCLUDED.seasons,\n        fetched_at = now()\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2d1bc96004e07970b7a6c5caa30606dc237e246bd47e00cabc8852539573b79f"
+}

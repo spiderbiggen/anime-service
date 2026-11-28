@@ -4,7 +4,7 @@
 use jiff::civil::date;
 use tmdb::ListResponse;
 use tmdb::search::TvSearchResult;
-use tmdb::tv::{AlternativeTitle, ExternalIds, TvDetails, romaji_title};
+use tmdb::tv::{AlternativeTitle, ExternalIds, SeasonDetails, TvDetails, romaji_title};
 
 #[test]
 fn parses_a_full_search_result() {
@@ -147,4 +147,42 @@ fn no_romaji_title_when_there_is_none() {
 
     assert_eq!(romaji_title(&titles), None);
     assert_eq!(romaji_title(&[]), None);
+}
+
+#[test]
+fn parses_season_details() {
+    let season: SeasonDetails = serde_json::from_str(
+        r#"{
+            "season_number": 2, "overview": "", "poster_path": "/season.jpg",
+            "episodes": [
+                { "episode_number": 1, "name": "A Beginning", "air_date": "2026-10-08" },
+                { "episode_number": 2, "name": "Episode 2", "air_date": "" },
+                { "episode_number": 3, "air_date": null }
+            ]
+        }"#,
+    )
+    .expect("season parses");
+
+    assert_eq!(season.season_number, 2);
+    assert_eq!(season.poster_path.as_deref(), Some("/season.jpg"));
+    assert_eq!(season.episodes[0].air_date, Some(date(2026, 10, 8)));
+    assert_eq!(season.episodes[1].air_date, None);
+    assert_eq!(season.episodes[2].name, "");
+    assert_eq!(season.episodes[2].air_date, None);
+}
+
+#[test]
+fn parses_the_season_list_of_tv_details() {
+    let details: TvDetails = serde_json::from_str(
+        r#"{ "id": 1, "name": "Sample",
+             "seasons": [{ "season_number": 0, "episode_count": 3 }, { "season_number": 1 }] }"#,
+    )
+    .expect("details parse");
+
+    let seasons: Vec<_> = details
+        .seasons
+        .iter()
+        .map(|season| (season.season_number, season.episode_count))
+        .collect();
+    assert_eq!(seasons, [(0, 3), (1, 0)]);
 }

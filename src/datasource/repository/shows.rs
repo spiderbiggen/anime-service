@@ -6,6 +6,7 @@ use sqlx::types::Json;
 use sqlx::{Executor, Postgres, query_file};
 
 use crate::models::ShowSummary;
+use crate::seasons::SeasonCount;
 
 /// Loads the show summary of every title that has a matched, already fetched show.
 pub(crate) async fn summaries_for_titles<'e, E>(
@@ -73,6 +74,7 @@ pub(crate) async fn upsert_show<'e, E>(
     executor: E,
     tmdb_id: u32,
     summary: &ShowSummary,
+    seasons: &[SeasonCount],
 ) -> Result<()>
 where
     E: Executor<'e, Database = Postgres>,
@@ -80,7 +82,8 @@ where
     query_file!(
         "queries/shows/upsert_show.sql",
         tmdb_id.cast_signed(),
-        Json(summary) as _
+        Json(summary) as _,
+        Json(seasons) as _
     )
     .execute(executor)
     .await?;
