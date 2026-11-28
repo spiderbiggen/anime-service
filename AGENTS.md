@@ -16,7 +16,7 @@ CI (`.github/workflows/ci.yml`) runs fmt check, tests, and clippy. Run all three
 ## Layout
 
 - Cargo workspace: root crate `anime-service` plus the API clients `nyaa` and `tmdb`.
-- `src/controllers/rest.rs` handles transport (REST and SSE); `src/datasource/repository/` holds DB access; `src/jobs/poller.rs` is the Nyaa poller and `src/jobs/resolver.rs` matches release titles to TMDB shows; `src/state.rs` holds `AppState`.
+- `src/controllers/rest.rs` handles transport (REST and SSE); `src/datasource/repository/` holds DB access; `src/jobs/poller.rs` is the Nyaa poller and `src/jobs/resolver.rs` matches release titles to TMDB shows and fetches their seasons; `src/seasons.rs` works out a release's TMDB season and episode numbers (no I/O); `src/state.rs` holds `AppState`.
 - `src/bin/`: `anime-service` is the service; `mock-stream` is a fake SSE stream for testing consumers (it builds its events from the real models, so keep it compiling when the models change).
 - Router wiring lives in `src/lib.rs`.
 

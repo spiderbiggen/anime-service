@@ -14,6 +14,16 @@ pub struct Genre {
     pub name: String,
 }
 
+/// A season as listed in the details of a show.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SeasonSummary {
+    /// The number of the season within the show.
+    pub season_number: u32,
+    /// The number of episodes, including ones that have not aired yet.
+    #[serde(default)]
+    pub episode_count: u32,
+}
+
 /// The details of a TV show.
 ///
 /// TMDB documents no field as required, so everything except `id` and `name` falls back to a
@@ -45,6 +55,9 @@ pub struct TvDetails {
     /// The number of seasons.
     #[serde(default)]
     pub number_of_seasons: Option<u32>,
+    /// The show's seasons. Season 0 holds the specials.
+    #[serde(default)]
+    pub seasons: Vec<SeasonSummary>,
     /// Whether the show is flagged as adult content.
     #[serde(default)]
     pub adult: bool,
@@ -63,6 +76,35 @@ pub struct TvDetails {
     /// The backdrop path, see [`crate::images::backdrop_url`].
     #[serde(default, deserialize_with = "optional_string")]
     pub backdrop_path: Option<String>,
+}
+
+/// The details of a season.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SeasonDetails {
+    /// The number of the season within the show.
+    pub season_number: u32,
+    /// The synopsis. Empty when TMDB has none in the requested language.
+    #[serde(default)]
+    pub overview: String,
+    /// The poster path, see [`crate::images::poster_url`].
+    #[serde(default, deserialize_with = "optional_string")]
+    pub poster_path: Option<String>,
+    /// The episodes of the season.
+    #[serde(default)]
+    pub episodes: Vec<SeasonEpisode>,
+}
+
+/// An episode as listed in the details of a season.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SeasonEpisode {
+    /// The number TMDB gives the episode within its season.
+    pub episode_number: u32,
+    /// The localized title. TMDB uses a placeholder such as `Episode 11` while it has none.
+    #[serde(default)]
+    pub name: String,
+    /// The date the episode airs, when known.
+    #[serde(default, deserialize_with = "optional_date")]
+    pub air_date: Option<jiff::civil::Date>,
 }
 
 /// The ids of a show on other services.
@@ -92,6 +134,18 @@ pub async fn details(client: &TmdbClient, id: u32, language: Option<&str>) -> Re
         .into_iter()
         .collect();
     client.get(&format!("tv/{id}"), &query).await
+}
+
+/// Fetches the details of one season of a TV show, including its episodes.
+///
+/// # Errors
+///
+/// Returns an error if the request fails, TMDB answers with a non-success status (404 when the
+/// show or season does not exist), or the response cannot be parsed.
+pub async fn season(client: &TmdbClient, id: u32, season_number: u32) -> Result<SeasonDetails> {
+    client
+        .get(&format!("tv/{id}/season/{season_number}"), &[])
+        .await
 }
 
 /// Fetches the ids of a TV show on other services.

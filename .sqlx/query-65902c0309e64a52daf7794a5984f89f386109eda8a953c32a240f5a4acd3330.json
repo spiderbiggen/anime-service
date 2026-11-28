@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT tm.title                                  AS \"title!\",\n       s.tmdb_id                                 AS \"tmdb_id!\",\n       tm.season_number,\n       tm.episode_offset,\n       s.seasons                                 AS \"seasons: sqlx::types::Json<Vec<crate::seasons::SeasonCount>>\",\n       (s.fetched_at < now() - INTERVAL '1 day') AS \"show_is_old!\"\nFROM title_match tm\n         JOIN show s ON s.tmdb_id = tm.tmdb_id\nWHERE tm.title = ANY ($1)\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "title!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "title_match",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "tmdb_id!",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "show",
+            "name": "tmdb_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "season_number",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "title_match",
+            "name": "season_number"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "episode_offset",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "title_match",
+            "name": "episode_offset"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "seasons: sqlx::types::Json<Vec<crate::seasons::SeasonCount>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "show",
+            "name": "seasons"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "show_is_old!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "65902c0309e64a52daf7794a5984f89f386109eda8a953c32a240f5a4acd3330"
+}

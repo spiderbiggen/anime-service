@@ -21,6 +21,7 @@ mod datasource;
 pub mod errors;
 pub mod jobs;
 pub mod models;
+mod seasons;
 pub mod state;
 
 static SOCKET: &SocketAddr = &SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8000);

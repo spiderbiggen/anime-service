@@ -7,7 +7,7 @@ use jiff_sqlx::ToSqlx;
 use sqlx::types::Uuid;
 use sqlx::{Connection, Executor, Pool, Postgres, query_file};
 
-use crate::datasource::repository::{download_resolutions, shows};
+use crate::datasource::repository::{download_resolutions, seasons, shows};
 use crate::models::{DownloadGroup, DownloadVariant, Episode};
 
 pub mod batch;
@@ -88,6 +88,7 @@ pub async fn get_with_downloads(
                 updated_at: r.updated_at,
                 downloads: downloads.remove(&r.id).unwrap_or_default(),
                 show: None,
+                tmdb: None,
             })
         })
         .collect();
@@ -98,8 +99,10 @@ pub async fn get_with_downloads(
     titles.sort_unstable();
     titles.dedup();
     let summaries = shows::summaries_for_titles(&executor, &titles).await?;
+    let season_data = seasons::data_for_titles(&executor, &titles).await?;
     for episode in &mut episodes {
         episode.show = summaries.get(&episode.title).cloned();
+        episode.tmdb = season_data.find(episode);
     }
     Ok(episodes)
 }

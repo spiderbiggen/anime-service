@@ -29,7 +29,10 @@ use tokio::time::{Instant, interval, interval_at, sleep};
 use tracing::info;
 use tracing_subscriber::prelude::*;
 
-use anime_service::models::{Download, DownloadGroup, DownloadVariant, Episode, ShowSummary};
+use anime_service::models::{
+    Download, DownloadGroup, DownloadVariant, Episode, EpisodeRange, SeasonRef, ShowSummary,
+    TmdbEpisodes, TmdbMatch,
+};
 
 const DEFAULT_PORT: u16 = 8000;
 const DEFAULT_EVENT_EVERY: Duration = Duration::from_secs(10);
@@ -205,6 +208,18 @@ fn group(
             })
             .collect(),
         show,
+        tmdb: None,
+    }
+}
+
+/// Adds TMDB numbering to a release, in season 2 so that it differs from the release's own.
+fn numbered(group: DownloadGroup, episodes: TmdbEpisodes) -> DownloadGroup {
+    DownloadGroup {
+        tmdb: Some(TmdbMatch {
+            season: SeasonRef { number: 2 },
+            episodes,
+        }),
+        ..group
     }
 }
 
@@ -233,12 +248,15 @@ fn cases(now: Timestamp) -> Vec<DownloadGroup> {
             Some(show()),
             now,
         ),
-        group(
-            "Sample Show",
-            episode(7),
-            &[480, 720, 1080],
-            Some(show()),
-            now,
+        numbered(
+            group(
+                "Sample Show",
+                episode(7),
+                &[480, 720, 1080],
+                Some(show()),
+                now,
+            ),
+            TmdbEpisodes::Episode { number: 19 },
         ),
         group("Sample Show", episode(8), &[480, 720], None, now),
         group(
@@ -253,12 +271,15 @@ fn cases(now: Timestamp) -> Vec<DownloadGroup> {
             None,
             now,
         ),
-        group(
-            "Sample Show",
-            DownloadVariant::Batch(1..=12),
-            &[1080],
-            Some(show()),
-            now,
+        numbered(
+            group(
+                "Sample Show",
+                DownloadVariant::Batch(1..=12),
+                &[1080],
+                Some(show()),
+                now,
+            ),
+            TmdbEpisodes::Episodes(EpisodeRange { start: 13, end: 24 }),
         ),
         group("Sample Movie", DownloadVariant::Movie, &[1080], None, now),
         group("Unmatched Show", episode(1), &[1080], None, now),
@@ -285,6 +306,17 @@ mod tests {
         }
         assert!(cases.iter().any(|case| case.get("show").is_some()));
         assert!(cases.iter().any(|case| case.get("show").is_none()));
+        assert!(
+            cases
+                .iter()
+                .any(|case| case["tmdb"].get("episode").is_some())
+        );
+        assert!(
+            cases
+                .iter()
+                .any(|case| case["tmdb"].get("episodes").is_some())
+        );
+        assert!(cases.iter().any(|case| case.get("tmdb").is_none()));
         assert!(
             cases.iter().any(|case| {
                 let resolutions: Vec<_> = case["downloads"]
