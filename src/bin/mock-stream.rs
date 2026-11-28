@@ -30,8 +30,8 @@ use tracing::info;
 use tracing_subscriber::prelude::*;
 
 use anime_service::models::{
-    Download, DownloadGroup, DownloadVariant, Episode, EpisodeRange, SeasonRef, ShowSummary,
-    TmdbEpisodes, TmdbMatch,
+    Download, DownloadGroup, DownloadVariant, Episode, EpisodeRange, ShowSummary, TmdbEpisodes,
+    TmdbMatch, TmdbSeason,
 };
 
 const DEFAULT_PORT: u16 = 8000;
@@ -212,14 +212,30 @@ fn group(
     }
 }
 
-/// Adds TMDB numbering to a release, in season 2 so that it differs from the release's own.
-fn numbered(group: DownloadGroup, episodes: TmdbEpisodes) -> DownloadGroup {
+/// Adds a TMDB match to a release.
+fn matched(group: DownloadGroup, season: TmdbSeason, episodes: TmdbEpisodes) -> DownloadGroup {
     DownloadGroup {
-        tmdb: Some(TmdbMatch {
-            season: SeasonRef { number: 2 },
-            episodes,
-        }),
+        tmdb: Some(TmdbMatch { season, episodes }),
         ..group
+    }
+}
+
+/// Season 2, so that the numbering differs from the release's own, with every detail.
+fn detailed_season() -> TmdbSeason {
+    TmdbSeason {
+        number: 2,
+        poster_url: Some("https://image.tmdb.org/t/p/w500/sample-season.jpg".into()),
+        overview: Some("A made-up synopsis of the second season.".into()),
+    }
+}
+
+/// Season 2 as TMDB often has it, with nothing but its number, so consumers have to fall back to
+/// the show.
+fn bare_season() -> TmdbSeason {
+    TmdbSeason {
+        number: 2,
+        poster_url: None,
+        overview: None,
     }
 }
 
@@ -248,7 +264,7 @@ fn cases(now: Timestamp) -> Vec<DownloadGroup> {
             Some(show()),
             now,
         ),
-        numbered(
+        matched(
             group(
                 "Sample Show",
                 episode(7),
@@ -256,7 +272,11 @@ fn cases(now: Timestamp) -> Vec<DownloadGroup> {
                 Some(show()),
                 now,
             ),
-            TmdbEpisodes::Episode { number: 19 },
+            detailed_season(),
+            TmdbEpisodes::Episode {
+                number: 19,
+                name: Some("A Made-up Episode Title".into()),
+            },
         ),
         group("Sample Show", episode(8), &[480, 720], None, now),
         group(
@@ -271,7 +291,7 @@ fn cases(now: Timestamp) -> Vec<DownloadGroup> {
             None,
             now,
         ),
-        numbered(
+        matched(
             group(
                 "Sample Show",
                 DownloadVariant::Batch(1..=12),
@@ -279,6 +299,7 @@ fn cases(now: Timestamp) -> Vec<DownloadGroup> {
                 Some(show()),
                 now,
             ),
+            bare_season(),
             TmdbEpisodes::Episodes(EpisodeRange { start: 13, end: 24 }),
         ),
         group("Sample Movie", DownloadVariant::Movie, &[1080], None, now),
@@ -317,6 +338,21 @@ mod tests {
                 .any(|case| case["tmdb"].get("episodes").is_some())
         );
         assert!(cases.iter().any(|case| case.get("tmdb").is_none()));
+        for field in ["poster_url", "overview"] {
+            let has_field = |case: &&Value| case["tmdb"]["season"].get(field).is_some();
+            assert!(cases.iter().any(|case| has_field(&case)), "no {field}");
+            assert!(
+                cases
+                    .iter()
+                    .any(|case| case.get("tmdb").is_some() && !has_field(&case)),
+                "every match has a {field}"
+            );
+        }
+        assert!(
+            cases
+                .iter()
+                .any(|case| case["tmdb"]["episode"].get("name").is_some())
+        );
         assert!(
             cases.iter().any(|case| {
                 let resolutions: Vec<_> = case["downloads"]
