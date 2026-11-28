@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tmdb::tv::{SeasonDetails, SeasonSummary};
 
 use crate::jobs::resolver::split_season_suffix;
-use crate::models::{DownloadVariant, EpisodeRange, SeasonRef, TmdbEpisodes, TmdbMatch};
+use crate::models::{DownloadVariant, EpisodeRange, TmdbEpisodes, TmdbMatch, TmdbSeason};
 
 /// How many days before its TMDB air date an episode may be released. Some shows are
 /// consistently released more than a week ahead of TMDB's schedule.
@@ -180,7 +180,7 @@ pub(crate) fn verify(
     if season.number != target.season {
         return None;
     }
-    season.episode(target.first)?;
+    let first = season.episode(target.first)?;
     let last = season.episode(target.last)?;
 
     let is_batch = matches!(variant, DownloadVariant::Batch(_));
@@ -199,13 +199,12 @@ pub(crate) fn verify(
         })
     } else {
         TmdbEpisodes::Episode {
-            number: target.first,
+            number: first.number,
+            name: first.has_title().then(|| first.name.clone()),
         }
     };
     Some(TmdbMatch {
-        season: SeasonRef {
-            number: target.season,
-        },
+        season: TmdbSeason::new(target.season, season.poster_path.clone(), &season.overview),
         episodes,
     })
 }
@@ -279,10 +278,14 @@ mod tests {
         )
     }
 
+    /// The match expected from a [`weekly`] season.
     fn single(season: u32, number: u32) -> TmdbMatch {
         TmdbMatch {
-            season: SeasonRef { number: season },
-            episodes: TmdbEpisodes::Episode { number },
+            season: TmdbSeason::new(season, None, ""),
+            episodes: TmdbEpisodes::Episode {
+                number,
+                name: Some(format!("Title of {number}")),
+            },
         }
     }
 
@@ -400,7 +403,7 @@ mod tests {
         assert_eq!(
             found,
             Some(TmdbMatch {
-                season: SeasonRef { number: 3 },
+                season: TmdbSeason::new(3, None, ""),
                 episodes: TmdbEpisodes::Episodes(EpisodeRange { start: 1, end: 24 }),
             })
         );
@@ -528,6 +531,34 @@ mod tests {
             assert_eq!(locate("Show S1", &variant, None, &[]), None);
             assert_eq!(locate("Show", &variant, Some(correction), &[]), None);
         }
+    }
+
+    #[test]
+    fn a_match_carries_the_season_details_but_not_a_placeholder_title() {
+        let mut season = weekly(2, 11..=11, date(2026, 12, 17));
+        season.overview = "About the season".to_owned();
+        season.poster_path = Some("/season.jpg".to_owned());
+        season.episodes[0].name = "Episode 11".to_owned();
+
+        let found = find(
+            "Show S2",
+            &episode(11),
+            date(2026, 12, 17),
+            None,
+            &[],
+            &season,
+        );
+
+        assert_eq!(
+            found,
+            Some(TmdbMatch {
+                season: TmdbSeason::new(2, Some("/season.jpg".to_owned()), "About the season"),
+                episodes: TmdbEpisodes::Episode {
+                    number: 11,
+                    name: None
+                },
+            })
+        );
     }
 
     #[test]

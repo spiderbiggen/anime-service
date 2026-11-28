@@ -205,18 +205,36 @@ pub struct DownloadGroup {
     pub tmdb: Option<TmdbMatch>,
 }
 
-/// Where a release is on TMDB. Its numbering can differ from the release's own.
+/// Where a release is on TMDB, whose numbering can differ from the release's own, along with what
+/// TMDB knows about that season and episode.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct TmdbMatch {
-    pub season: SeasonRef,
+    pub season: TmdbSeason,
     #[serde(flatten)]
     pub episodes: TmdbEpisodes,
 }
 
 /// A season of a show.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct SeasonRef {
+pub struct TmdbSeason {
     pub number: u32,
+    /// The season's own poster. Missing when TMDB has none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poster_url: Option<String>,
+    /// The season's own synopsis. Missing when TMDB has none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub overview: Option<String>,
+}
+
+impl TmdbSeason {
+    /// Creates a season from what TMDB has about it. An empty overview counts as none.
+    pub(crate) fn new(number: u32, poster_path: Option<String>, overview: &str) -> Self {
+        Self {
+            number,
+            poster_url: poster(poster_path),
+            overview: Some(overview.to_owned()).filter(|overview| !overview.is_empty()),
+        }
+    }
 }
 
 /// The episodes a release holds, numbered within their TMDB season. Serialized as an `episode`
@@ -224,7 +242,12 @@ pub struct SeasonRef {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TmdbEpisodes {
-    Episode { number: u32 },
+    Episode {
+        number: u32,
+        /// The episode's title. Missing while TMDB only has a placeholder.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
+    },
     Episodes(EpisodeRange),
 }
 
@@ -445,11 +468,14 @@ mod tests {
     #[test]
     fn a_tmdb_match_names_one_episode_or_a_range() {
         let episode = TmdbMatch {
-            season: SeasonRef { number: 1 },
-            episodes: TmdbEpisodes::Episode { number: 38 },
+            season: TmdbSeason::new(1, None, ""),
+            episodes: TmdbEpisodes::Episode {
+                number: 38,
+                name: None,
+            },
         };
         let batch = TmdbMatch {
-            season: SeasonRef { number: 3 },
+            season: TmdbSeason::new(3, None, ""),
             episodes: TmdbEpisodes::Episodes(EpisodeRange { start: 1, end: 24 }),
         };
 
@@ -460,6 +486,29 @@ mod tests {
         assert_eq!(
             serde_json::to_value(batch).expect("serializes"),
             serde_json::json!({ "season": { "number": 3 }, "episodes": { "start": 1, "end": 24 } })
+        );
+    }
+
+    #[test]
+    fn a_tmdb_match_carries_the_season_and_episode_details_there_are() {
+        let found = TmdbMatch {
+            season: TmdbSeason::new(2, Some("/s.jpg".to_owned()), "About the season"),
+            episodes: TmdbEpisodes::Episode {
+                number: 9,
+                name: Some("A Title".to_owned()),
+            },
+        };
+
+        assert_eq!(
+            serde_json::to_value(found).expect("serializes"),
+            serde_json::json!({
+                "season": {
+                    "number": 2,
+                    "poster_url": "https://image.tmdb.org/t/p/w500/s.jpg",
+                    "overview": "About the season"
+                },
+                "episode": { "number": 9, "name": "A Title" }
+            })
         );
     }
 

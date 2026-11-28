@@ -30,9 +30,20 @@ INSERT INTO title_match (title, tmdb_id, source) VALUES ('Some Title', 12345, 'm
 ON CONFLICT (title) DO UPDATE SET tmdb_id = EXCLUDED.tmdb_id, source = 'manual';
 ```
 
-## Season and episode numbers
+## Seasons and episodes
 
-Release numbering does not always follow TMDB's, so downloads can carry a `tmdb` object with the numbers TMDB uses, next to the release's own: `{ "season": { "number": 1 }, "episode": { "number": 38 } }`, or `{ "season": { "number": 3 }, "episodes": { "start": 1, "end": 24 } }` for a batch. It is only sent when it passes the checks below; otherwise the download comes without it.
+Release numbering does not always follow TMDB's, so downloads can carry a `tmdb` object with the numbers TMDB uses, next to the release's own. It is only sent when it passes the checks below; otherwise the download comes without it. A single episode has an `episode` object:
+
+```json
+{
+  "season": { "number": 2, "poster_url": "https://image.tmdb.org/t/p/w500/season.jpg", "overview": "..." },
+  "episode": { "number": 9, "name": "A Rescue Mission Gone Awry" }
+}
+```
+
+A batch has an `episodes` range instead, without titles: `{ "season": { "number": 3 }, "episodes": { "start": 1, "end": 24 } }`.
+
+`poster_url`, `overview` and the episode's `name` are left out when TMDB has none, which is common for `overview`, and `name` also while TMDB only has a placeholder such as `Episode 11`. Fall back to the fields of `show` for the poster and synopsis.
 
 - A title ending in a suffix such as `S2` is looked for in that TMDB season only. Any other title is numbered from season 1, running on into later regular seasons (specials are not counted).
 - The episodes must exist in that season. A single episode must be released at most 10 days before and 3 days after its TMDB air date. A batch must fit in one season and be released at most 10 days before its last episode airs.
